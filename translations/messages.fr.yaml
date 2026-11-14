@@ -1,0 +1,10 @@
+app:
+    name: "Ticket'Tournelle"
+nav:
+    language: "Langue"
+    locale:
+        fr: "Français"
+        en: "English"
+home:
+    title: "Bienvenue sur Ticket'Tournelle"
+    intro: "Le portail de déclaration et de suivi des incidents techniques du lycée La Tournelle."

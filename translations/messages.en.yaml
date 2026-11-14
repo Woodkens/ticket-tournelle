@@ -1,0 +1,10 @@
+app:
+    name: "Ticket'Tournelle"
+nav:
+    language: "Language"
+    locale:
+        fr: "Français"
+        en: "English"
+home:
+    title: "Welcome to Ticket'Tournelle"
+    intro: "The portal for reporting and tracking technical incidents at La Tournelle high school."

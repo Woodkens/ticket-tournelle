@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="{{ app.request.locale }}">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>{% block title %}{{ 'app.name'|trans }}{% endblock %}</title>
+        {% block stylesheets %}{% endblock %}
+        {% block javascripts %}
+            {% block importmap %}{{ importmap('app') }}{% endblock %}
+        {% endblock %}
+    </head>
+    <body>
+        <nav class="navbar navbar-expand bg-body-tertiary border-bottom">
+            <div class="container">
+                <span class="navbar-brand">{{ 'app.name'|trans }}</span>
+                <div class="navbar-nav ms-auto" aria-label="{{ 'nav.language'|trans }}">
+                    {% for locale in ['fr', 'en'] %}
+                        <a class="nav-link{{ app.request.locale == locale ? ' active' }}"
+                           href="{{ path('app_home', {_locale: locale}) }}"
+                           hreflang="{{ locale }}"
+                           {% if app.request.locale == locale %}aria-current="page"{% endif %}>
+                            {{ ('nav.locale.' ~ locale)|trans }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </nav>
+        <main class="container py-4">
+            {% block body %}{% endblock %}
+        </main>
+    </body>
+</html>
