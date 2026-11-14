@@ -1,0 +1,15 @@
+#!/bin/sh
+# Hook Git exécuté avant chaque « git push » (R1 §6.4, ENF-11).
+# Scanne tout l'historique avec gitleaks : si un secret est trouvé, le push est bloqué.
+# Activation (une fois par clone) : git config core.hooksPath .githooks
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "pre-push : gitleaks n'est pas installé (sudo apt install gitleaks). Push bloqué." >&2
+    exit 1
+fi
+
+# --redact : un secret détecté n'est jamais affiché en clair dans le terminal
+if ! gitleaks detect --source . --redact --no-banner; then
+    echo "pre-push : secret détecté, push bloqué. Changer le secret puis nettoyer l'historique (ENF-13)." >&2
+    exit 1
+fi
