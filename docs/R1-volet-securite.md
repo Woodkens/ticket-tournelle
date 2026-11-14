@@ -136,7 +136,7 @@ Justification :
 
 ### 6.2 — Politique de mots de passe et de hachage
 
-- **Algorithme** : Argon2id (hasher « auto » de Symfony), avec un sel unique par mot de passe généré automatiquement.
+- **Algorithme** : Argon2id (hasher Symfony configuré explicitement en `argon2id`, D-08), avec un sel unique par mot de passe généré automatiquement.
 - **Longueur** : 12 caractères minimum pour les utilisateurs, 15 pour les administrateurs (en plus du TOTP). La longueur protège mieux que des règles de composition compliquées.
 - **Refus** : mots de passe trop courants ou déjà présents dans des fuites connues, et mot de passe identique à l'identifiant.
 - **Blocage** : 5 échecs en 15 minutes bloquent temporairement le compte et l'adresse IP (login throttling Symfony), avec un message d'erreur générique.

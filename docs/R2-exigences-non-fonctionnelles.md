@@ -14,7 +14,7 @@ Cette fiche fixe, avant le développement, les exigences de qualité et de sécu
 
 | ID | Exigence | Vérification |
 | --- | --- | --- |
-| ENF-01 | Hachage Argon2id avec sel unique (hasher « auto » de Symfony) ; aucun mot de passe stocké en clair ni chiffré de façon réversible | Lecture de la table UTILISATEUR : empreinte commençant par `$argon2id$` |
+| ENF-01 | Hachage Argon2id avec sel unique (hasher Symfony `algorithm: argon2id`, D-08) ; aucun mot de passe stocké en clair ni chiffré de façon réversible | Lecture de la table UTILISATEUR : empreinte commençant par `$argon2id$` |
 | ENF-02 | 12 caractères minimum pour les utilisateurs, 15 pour les administrateurs ; refus des mots de passe courants ou identiques à l'identifiant | Création d'un compte avec un mot de passe de 11 caractères → refusée |
 | ENF-03 | 5 échecs en 15 minutes bloquent temporairement le compte et l'adresse IP ; message d'erreur générique | 6 essais erronés → blocage, échecs présents dans le journal |
 | ENF-04 | Mot de passe provisoire à changer à la première connexion ; lien de réinitialisation à usage unique qui expire | Lien réutilisé ou expiré → refusé |

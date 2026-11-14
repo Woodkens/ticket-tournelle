@@ -16,7 +16,7 @@
 ## Stack (figée)
 - Debian 13, Nginx + PHP-FPM 8.4, MariaDB 11.8.
 - Symfony 7.4 LTS, Doctrine ORM et migrations, Twig + Bootstrap 5.
-- Symfony Security (hasher « auto » = Argon2id), scheb/2fa-bundle (TOTP), Symfony Translation (fr, en).
+- Symfony Security (hasher `algorithm: argon2id` explicite, D-08), scheb/2fa-bundle (TOTP), Symfony Translation (fr, en).
 - Aucune autre dépendance sans l'accord du binôme ; versions figées dans `composer.lock`, vérifiées avec `composer audit`.
 
 ## Façon de travailler
@@ -28,7 +28,7 @@
 
 ## Règles de sécurité (non négociables)
 - Aucun secret dans Git : secrets uniquement dans `.env.local` (gitignoré) ; `.env` ne contient que des valeurs factices. Ne jamais lire ni afficher `.env.local`.
-- Mots de passe : hasher Symfony « auto » (Argon2id). Jamais MD5 ni SHA1.
+- Mots de passe : hasher Symfony `algorithm: argon2id` (le mode « auto » choisit bcrypt, voir D-08). Jamais MD5 ni SHA1.
 - Chaque route vérifie les droits côté serveur (Voters), selon la matrice du CdC §2.1. Un utilisateur ne voit que ses propres tickets (protection IDOR).
 - Accès à la base uniquement via Doctrine ou des requêtes préparées ; jamais de concaténation dans une requête SQL.
 - Échappement Twig jamais désactivé sur des données saisies par un utilisateur (pas de `|raw`).
@@ -48,4 +48,10 @@
 - Après chaque choix technique ou cyber notable (bibliothèque, configuration de sécurité, modèle de données, problème contourné), ajouter une entrée dans `docs/journal-decisions.md` avec la skill `/decision`.
 
 ## Commandes du projet
-- À compléter une fois le projet Symfony créé (lancer `/init` : il proposera des ajouts à ce fichier).
+- Le projet vit dans `~/ticket-tournelle` sous WSL2 / Debian 13 (pas sous Windows). Installation complète : `README.md`.
+- Tests : `php bin/phpunit`
+- Audit des dépendances : `composer audit`
+- Scan des secrets : `gitleaks detect --source . --redact` (lancé aussi par le hook `.githooks/pre-push`)
+- Cache : `php bin/console cache:clear`
+- Migrations (compte `tt_migrate`, hors projet) : `(set -a; . ~/.config/tickettournelle/migrate.env; php bin/console doctrine:migrations:migrate)`
+- Site de dev : `http://localhost/` (Nginx + PHP-FPM, config dans `deploy/dev/`)

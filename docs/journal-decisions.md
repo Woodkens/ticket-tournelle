@@ -64,3 +64,12 @@ Binôme : William Matondo Ngongo · Woodkens Guervil. Une entrée par choix nota
 - **Justification** : un admin doit pouvoir exister avant d'avoir scanné son QR code, donc la base ne peut pas exiger la 2FA ; elle garantit seulement qu'une 2FA active a toujours un secret. Le vrai contrôle se fait au login, côté application.
 - **Lien** : ENF-05, CdC V1.2 §7.1, MPD (table utilisateur).
 - **Auteur** : Woodkens
+
+### D-08 — Hasher Argon2id déclaré explicitement (complète D-02)
+- **Date** : 14/11/2026
+- **Contexte** : en testant le projet Symfony 7.4, le hasher « auto » prévu par D-02 a produit des empreintes bcrypt (`$2y$`) et non Argon2id.
+- **Options étudiées** : garder « auto » (bcrypt) et corriger les documents ; déclarer `algorithm: argon2id` dans `config/packages/security.yaml`.
+- **Choix** : `algorithm: argon2id` explicite, vérifié par un test automatique (`tests/Security/PasswordHasherTest.php`) qui exige le préfixe `$argon2id$`.
+- **Justification** : « auto » laisse Symfony choisir et ce choix peut changer d'une version à l'autre ; écrire l'algorithme rend l'exigence ENF-01 explicite et le test la prouve à chaque exécution.
+- **Lien** : ENF-01, R1 §6.2, D-02. Documents mis à jour : CLAUDE.md, R1 §6.2, R2 ENF-01.
+- **Auteur** : Woodkens
