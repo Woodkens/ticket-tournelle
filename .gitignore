@@ -1,0 +1,39 @@
+# =====================================================================
+#  Ticket'Tournelle — fichiers exclus du dépôt
+#  Règle n°1 (ENF-11) : aucun secret dans Git.
+# =====================================================================
+
+# --- Secrets : jamais versionnés (R1 §6.4) ---
+.env.local
+.env.local.php
+.env.*.local
+*.pem
+*.key
+*.p12
+
+# --- Dépendances et fichiers générés ---
+/vendor/
+/var/
+/public/bundles/
+/public/assets/
+/assets/vendor/
+
+# --- Tests ---
+/.phpunit.cache/
+/phpunit.xml
+.phpunit.result.cache
+
+# --- Pièces jointes et sauvegardes (données personnelles, RGPD) ---
+/uploads/
+*.sql.gz
+*.dump
+
+# --- Postes de travail (IDE, système) ---
+/.idea/
+/.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Claude Code : réglages personnels (la skill partagée reste versionnée) ---
+/.claude/settings.local.json
