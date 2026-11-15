@@ -2,8 +2,18 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
-    # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    # Session (R1 §6.3). Elle n'est démarrée que si on y lit ou écrit quelque chose.
+    session:
+        # ENF-06 : cookie envoyé seulement en HTTPS, illisible par JavaScript,
+        # et non envoyé par un formulaire posté depuis un autre site.
+        cookie_secure: true
+        cookie_httponly: true
+        cookie_samesite: lax
+        # Cookie « de session » : effacé à la fermeture du navigateur (pas de « se souvenir de moi »).
+        cookie_lifetime: 0
+        # Durée de garde des fichiers de session côté serveur = durée maximale d'une session (8 h, ENF-08).
+        # La déconnexion après inactivité est faite par App\EventSubscriber\SessionExpirationSubscriber.
+        gc_maxlifetime: 28800
 
     #esi: true
     #fragments: true
