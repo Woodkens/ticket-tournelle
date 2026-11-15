@@ -1,0 +1,23 @@
+{% extends 'admin/_layout.html.twig' %}
+
+{% block title %}{{ 'import.title'|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte tt-carte-large mx-auto bg-white p-4">
+        <h1 class="h4 mb-1">{{ 'import.title'|trans }}</h1>
+        <p class="text-secondary">{{ 'import.subtitle'|trans }}</p>
+        <ul class="small text-secondary">
+            <li>{{ 'import.rule_columns'|trans }}</li>
+            <li>{{ 'import.rule_roles'|trans }}</li>
+            <li>{{ 'import.rule_preview'|trans }}</li>
+        </ul>
+
+        {{ form_start(formulaire) }}
+            {{ form_widget(formulaire) }}
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'import.check'|trans }}</button>
+                <a class="btn btn-outline-secondary" href="{{ path('app_admin_comptes') }}">{{ 'admin.cancel'|trans }}</a>
+            </div>
+        {{ form_end(formulaire) }}
+    </div>
+{% endblock %}
