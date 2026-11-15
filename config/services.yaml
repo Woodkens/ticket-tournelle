@@ -7,12 +7,31 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # --- Comptes administrateurs séparés (C5, D-19) ---
+    # Un compte admin a une adresse e-mail DÉDIÉE, différente de celle du compte utilisateur de la même
+    # personne. La convention est un réglage, pas une règle écrite dans le code :
+    #   - sous-adressage (par défaut) : prenom.nom+admin@domaine  -> motif '/\+admin@/'
+    #   - alias créé par le lycée     : adm-prenom.nom@domaine    -> motif '/^adm-/'
+    # Hypothèse à valider par le MOA (H6) : la messagerie du lycée accepte le sous-adressage.
+    app.comptes.motif_email_admin: '/\+admin@/'
+    # Exemple montré dans les messages d'erreur, à changer en même temps que le motif
+    app.comptes.exemple_email_admin: 'prenom.nom+admin@exemple.fr'
+
+    # Expéditeur des e-mails (activation, réinitialisation)
+    app.mail.expediteur: '%env(MAILER_FROM)%'
 
 services:
     # default configuration for services in *this* file
     _defaults:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        bind:
+            string $motifEmailAdmin: '%app.comptes.motif_email_admin%'
+            string $exempleEmailAdmin: '%app.comptes.exemple_email_admin%'
+            string $expediteur: '%app.mail.expediteur%'
+            bool $modeDebug: '%kernel.debug%'
+            string $fichierMotsDePasseCourants: '%kernel.project_dir%/config/securite/mots-de-passe-courants.txt'
+            string $cleTotpBase64: '%env(TOTP_ENCRYPTION_KEY)%'
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
