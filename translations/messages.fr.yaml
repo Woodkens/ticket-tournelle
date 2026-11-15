@@ -1,10 +1,36 @@
 app:
     name: "Ticket'Tournelle"
 nav:
+    main: "Navigation principale"
     language: "Langue"
+    logout: "Se déconnecter"
     locale:
         fr: "Français"
         en: "English"
+footer:
+    text: "Lycée des métiers La Tournelle · Ticket'Tournelle"
 home:
     title: "Bienvenue sur Ticket'Tournelle"
     intro: "Le portail de déclaration et de suivi des incidents techniques du lycée La Tournelle."
+    connected_as: "Vous êtes connecté en tant que %nom%."
+login:
+    title: "Connexion"
+    subtitle: "Connectez-vous avec votre compte nominatif du lycée."
+    email: "Adresse e-mail professionnelle"
+    password: "Mot de passe"
+    submit: "Se connecter"
+    forgot: "Mot de passe oublié ?"
+    forgot_soon: "Bientôt disponible"
+    notice: "Après 5 essais erronés, la connexion est bloquée 15 minutes. Pensez à vous déconnecter sur les postes partagés."
+    session_expired: "Votre session a expiré. Veuillez vous reconnecter."
+error:
+    back_home: "Retour à l'accueil"
+    403:
+        title: "Accès refusé"
+        text: "Vous n'avez pas le droit d'accéder à cette page."
+    404:
+        title: "Page introuvable"
+        text: "La page demandée n'existe pas ou a été déplacée."
+    500:
+        title: "Une erreur est survenue"
+        text: "Le service rencontre un problème. Réessayez dans quelques instants ou prévenez un référent numérique."

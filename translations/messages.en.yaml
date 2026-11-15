@@ -1,10 +1,36 @@
 app:
     name: "Ticket'Tournelle"
 nav:
+    main: "Main navigation"
     language: "Language"
+    logout: "Log out"
     locale:
         fr: "Français"
         en: "English"
+footer:
+    text: "Lycée des métiers La Tournelle · Ticket'Tournelle"
 home:
     title: "Welcome to Ticket'Tournelle"
     intro: "The portal for reporting and tracking technical incidents at La Tournelle high school."
+    connected_as: "You are logged in as %nom%."
+login:
+    title: "Log in"
+    subtitle: "Log in with your personal school account."
+    email: "Work e-mail address"
+    password: "Password"
+    submit: "Log in"
+    forgot: "Forgot your password?"
+    forgot_soon: "Coming soon"
+    notice: "After 5 failed attempts, logging in is blocked for 15 minutes. Remember to log out on shared computers."
+    session_expired: "Your session has expired. Please log in again."
+error:
+    back_home: "Back to the home page"
+    403:
+        title: "Access denied"
+        text: "You are not allowed to access this page."
+    404:
+        title: "Page not found"
+        text: "The page you requested does not exist or has been moved."
+    500:
+        title: "Something went wrong"
+        text: "The service has run into a problem. Try again in a moment or tell an IT contact."
