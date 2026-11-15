@@ -1,0 +1,15 @@
+framework:
+    rate_limiter:
+        # « Mot de passe oublié » : 3 demandes par adresse IP sur 15 minutes (D-20).
+        # Au-delà, la page répond la même chose mais n'envoie plus rien : on ne peut pas s'en servir
+        # pour inonder une boîte e-mail (R-07).
+        mot_de_passe_oublie:
+            policy: fixed_window
+            limit: 3
+            interval: '15 minutes'
+        # Codes TOTP : 5 codes faux par compte sur 15 minutes, puis la saisie est bloquée (ENF-05).
+        # Sans cette limite, un code à 6 chiffres se trouverait par essais successifs.
+        totp_echecs:
+            policy: fixed_window
+            limit: 5
+            interval: '15 minutes'

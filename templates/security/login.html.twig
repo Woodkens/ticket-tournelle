@@ -35,9 +35,9 @@
             <button type="submit" class="btn btn-primary w-100">{{ 'login.submit'|trans }}</button>
         </form>
 
-        {# Réinitialisation du mot de passe : S6 (US10). Texte inactif en attendant. #}
+        {# Réinitialisation par lien à usage unique (US10, ENF-04) #}
         <p class="text-center mt-3 mb-0">
-            <span class="tt-lien-inactif" aria-disabled="true" title="{{ 'login.forgot_soon'|trans }}">{{ 'login.forgot'|trans }}</span>
+            <a href="{{ path('app_mdp_oublie') }}">{{ 'login.forgot'|trans }}</a>
         </p>
 
         <hr class="my-4">

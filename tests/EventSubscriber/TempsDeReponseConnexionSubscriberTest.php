@@ -7,6 +7,7 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\PasswordHasherFactoryInterface;
 use Symfony\Component\PasswordHasher\PasswordHasherInterface;
+use App\Security\CompteNonActiveException;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Core\Exception\BadCredentialsException;
 use Symfony\Component\Security\Core\Exception\DisabledException;
@@ -35,6 +36,14 @@ final class TempsDeReponseConnexionSubscriberTest extends KernelTestCase
     public function testCompteDesactiveDeclencheUnCalculFactice(): void
     {
         $erreur = new BadCredentialsException('Bad credentials.', 0, new DisabledException());
+
+        self::assertSame(1, $this->calculsDeclenchesPar($erreur));
+    }
+
+    public function testCompteNonActiveDeclencheUnCalculFactice(): void
+    {
+        // ENF-04 : compte dont le titulaire n'a pas encore choisi son mot de passe
+        $erreur = new BadCredentialsException('Bad credentials.', 0, new CompteNonActiveException());
 
         self::assertSame(1, $this->calculsDeclenchesPar($erreur));
     }
