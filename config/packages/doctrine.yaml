@@ -8,6 +8,12 @@ doctrine:
 
         profiling_collect_backtrace: '%kernel.debug%'
 
+        # À chaque connexion, MariaDB passe en temps universel (UTC), comme PHP (D-26) : NOW(), les dates
+        # posées par MariaDB (journal_audit) et celles écrites par PHP parlent ainsi de la même heure.
+        # 1002 est le numéro de l'option PDO « commande exécutée à l'ouverture de la connexion ».
+        options:
+            1002: "SET time_zone = '+00:00'"
+
         # Doctrine ne compare que les tables déjà décrites par une entité (D-06).
         # Liste à compléter à chaque séance, jusqu'à couvrir les 10 tables du MPD.
         # Sans ce filtre, doctrine:schema:validate proposerait de SUPPRIMER les tables sans entité.
