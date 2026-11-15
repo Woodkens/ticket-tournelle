@@ -1,0 +1,4 @@
+# Login error messages (Symfony "security" domain).
+# Generic message (ENF-03): the same for an unknown e-mail, a wrong password or a disabled account.
+"Invalid credentials.": "Incorrect e-mail address or password."
+"Invalid CSRF token.": "The form has expired. Reload the page and try again."

@@ -1,10 +1,13 @@
 #!/bin/bash
-# Installe la configuration Nginx + PHP-FPM de développement.
+# Installe la configuration Nginx (HTTPS) + PHP-FPM de développement.
 # Usage (depuis la racine du projet) : sudo deploy/dev/install-web.sh
 set -euo pipefail
 
 DEV_USER=${SUDO_USER:?"Lancer avec sudo depuis son compte (pas en root direct)"}
 PROJECT=$(cd "$(dirname "$0")/../.." && pwd)
+
+# Certificat auto-signé du poste, hors du dépôt (ne fait rien s'il existe déjà)
+"$PROJECT/deploy/dev/make-cert.sh"
 
 sed "s#__USER__#${DEV_USER}#g" "$PROJECT/deploy/dev/php-fpm-tickettournelle.conf" \
     > /etc/php/8.4/fpm/pool.d/tickettournelle.conf
@@ -18,4 +21,4 @@ chmod 711 "/home/${DEV_USER}"
 
 nginx -t
 systemctl restart php8.4-fpm nginx
-echo "OK : http://localhost/"
+echo "OK : https://localhost/ (http://localhost/ redirige vers HTTPS)"

@@ -1,0 +1,46 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'login.title'|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte mx-auto bg-white p-4">
+        <h1 class="h4 mb-1">{{ 'login.title'|trans }}</h1>
+        <p class="text-secondary mb-4">{{ 'login.subtitle'|trans }}</p>
+
+        {% if app.request.query.has('expire') %}
+            <div class="alert alert-warning" role="status">{{ 'login.session_expired'|trans }}</div>
+        {% endif %}
+
+        {# Message générique : ne dit jamais si le compte existe (ENF-03). Échappé par Twig, jamais de |raw. #}
+        {% if erreur %}
+            <div class="alert alert-danger" role="alert">{{ erreur.messageKey|trans(erreur.messageData, 'security') }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ path('app_login') }}">
+            <div class="mb-3">
+                <label for="email" class="form-label">{{ 'login.email'|trans }}</label>
+                <input type="email" id="email" name="_username" value="{{ dernier_email }}"
+                       class="form-control" autocomplete="username" maxlength="180" required autofocus>
+            </div>
+
+            <div class="mb-4">
+                <label for="mot-de-passe" class="form-label">{{ 'login.password'|trans }}</label>
+                <input type="password" id="mot-de-passe" name="_password"
+                       class="form-control" autocomplete="current-password" required>
+            </div>
+
+            {# Jeton CSRF lié à la session : vérifié par le pare-feu avant le mot de passe #}
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+            <button type="submit" class="btn btn-primary w-100">{{ 'login.submit'|trans }}</button>
+        </form>
+
+        {# Réinitialisation du mot de passe : S6 (US10). Texte inactif en attendant. #}
+        <p class="text-center mt-3 mb-0">
+            <span class="tt-lien-inactif" aria-disabled="true" title="{{ 'login.forgot_soon'|trans }}">{{ 'login.forgot'|trans }}</span>
+        </p>
+
+        <hr class="my-4">
+        <p class="small text-secondary mb-0">{{ 'login.notice'|trans }}</p>
+    </div>
+{% endblock %}

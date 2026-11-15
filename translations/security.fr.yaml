@@ -1,0 +1,4 @@
+# Messages d'erreur de connexion (domaine « security » de Symfony).
+# Message générique (ENF-03) : le même pour un e-mail inconnu, un mauvais mot de passe ou un compte désactivé.
+"Invalid credentials.": "Identifiant ou mot de passe incorrect."
+"Invalid CSRF token.": "Le formulaire a expiré. Rechargez la page, puis réessayez."

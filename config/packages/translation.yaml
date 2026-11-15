@@ -2,6 +2,9 @@ framework:
     # Français par défaut, anglais disponible (contrainte C2, ENF-27)
     default_locale: fr
     enabled_locales: ['fr', 'en']
+    # URL sans langue (/, /login, /logout, pages d'erreur) : on prend la langue du navigateur
+    # parmi fr et en, sinon le français.
+    set_locale_from_accept_language: true
     translator:
         default_path: '%kernel.project_dir%/translations'
         fallbacks: ['fr']

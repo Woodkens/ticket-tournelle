@@ -4,6 +4,10 @@ framework:
         paths:
             - assets/
         missing_import_mode: strict
+        # Aucun CDN (C3, D-17) : par défaut, Symfony ajoute un script de secours chargé depuis ga.jspm.io
+        # pour les très vieux navigateurs. On le retire : les navigateurs visés (ENF-26) n'en ont pas besoin,
+        # et tout ce que la page charge vient ainsi de notre serveur.
+        importmap_polyfill: false
 
 when@prod:
     framework:

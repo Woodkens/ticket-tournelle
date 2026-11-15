@@ -1,0 +1,4 @@
+{# Toutes les autres erreurs (500, 405…) : même message neutre, seul le code HTTP change #}
+{% extends '@Twig/Exception/_erreur.html.twig' %}
+{% set cle = 'error.500' %}
+{% set code = status_code %}

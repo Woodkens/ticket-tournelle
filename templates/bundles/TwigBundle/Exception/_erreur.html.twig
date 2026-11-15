@@ -1,0 +1,17 @@
+{# Gabarit commun des pages d'erreur. Aucune information technique : ni message d'exception,
+   ni nom de fichier, ni version. Le détail reste dans les journaux du serveur. #}
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ (cle ~ '.title')|trans }} · {{ parent() }}{% endblock %}
+
+{# Pas de menu utilisateur : la page doit s'afficher même si la session ou la base est en panne #}
+{% block nav_utilisateur %}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte mx-auto bg-white p-4 text-center">
+        <p class="display-6 text-secondary mb-2">{{ code }}</p>
+        <h1 class="h4">{{ (cle ~ '.title')|trans }}</h1>
+        <p class="text-secondary">{{ (cle ~ '.text')|trans }}</p>
+        <a class="btn btn-primary" href="{{ path('app_root') }}">{{ 'error.back_home'|trans }}</a>
+    </div>
+{% endblock %}

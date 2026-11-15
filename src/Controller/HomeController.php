@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Utilisateur;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -11,12 +12,16 @@ use Symfony\Component\Routing\Attribute\Route;
 final class HomeController extends AbstractController
 {
     /**
-     * « / » redirige vers la langue du navigateur (fr ou en), français par défaut.
+     * « / » redirige vers l'accueil dans la langue du profil de la personne connectée (US03).
+     * C'est ici qu'on arrive juste après la connexion.
      */
     #[Route('/', name: 'app_root', methods: ['GET'])]
     public function root(Request $request): RedirectResponse
     {
-        $locale = $request->getPreferredLanguage(['fr', 'en']) ?? 'fr';
+        $utilisateur = $this->getUser();
+        $locale = $utilisateur instanceof Utilisateur
+            ? $utilisateur->getLangue()->value
+            : $request->getLocale();
 
         return $this->redirectToRoute('app_home', ['_locale' => $locale]);
     }

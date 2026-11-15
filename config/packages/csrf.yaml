@@ -1,11 +1,11 @@
-# Enable stateless CSRF protection for forms and logins/logouts
 framework:
+    # Formulaires Symfony (à partir de S6) : jeton CSRF sans état, réglage de la recette Symfony.
     form:
         csrf_protection:
             token_id: submit
 
     csrf_protection:
+        # Les jetons « authenticate » (connexion) et « logout » (déconnexion) ne sont PAS dans cette liste :
+        # ils restent des jetons classiques, tirés au hasard et gardés dans la session (D-10).
         stateless_token_ids:
             - submit
-            - authenticate
-            - logout
