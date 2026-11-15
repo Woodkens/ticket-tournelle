@@ -1,0 +1,12 @@
+# Messages de validation propres à l'application (domaine « validators » de Symfony).
+password:
+    too_short: "Le mot de passe doit contenir au moins %min% caractères."
+    too_long: "Le mot de passe ne doit pas dépasser %max% caractères."
+    personal: "Le mot de passe ne doit contenir ni votre nom, ni votre prénom, ni votre identifiant, ni un mot lié au lycée."
+    common: "Ce mot de passe fait partie des mots de passe les plus courants : choisissez-en un autre."
+    too_weak: "Le mot de passe est trop simple à deviner : mélangez davantage de caractères différents."
+    mismatch: "Les deux mots de passe saisis sont différents."
+account:
+    email_taken: "Un compte existe déjà avec cette adresse e-mail."
+    admin_email_required: "Un compte administrateur doit avoir une adresse dédiée, distincte du compte utilisateur (exemple : %exemple%)."
+    admin_email_forbidden: "Cette forme d'adresse est réservée aux comptes administrateurs."

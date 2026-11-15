@@ -1,0 +1,12 @@
+# Application-specific validation messages (Symfony "validators" domain).
+password:
+    too_short: "The password must be at least %min% characters long."
+    too_long: "The password must not be longer than %max% characters."
+    personal: "The password must not contain your first name, last name, username or a word related to the school."
+    common: "This password is one of the most common passwords: please choose another one."
+    too_weak: "The password is too easy to guess: mix more different characters."
+    mismatch: "The two passwords do not match."
+account:
+    email_taken: "An account already exists with this e-mail address."
+    admin_email_required: "An administrator account needs a dedicated address, separate from the user account (example: %exemple%)."
+    admin_email_forbidden: "This address format is reserved for administrator accounts."
