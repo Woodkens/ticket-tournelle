@@ -6,7 +6,9 @@ use App\Entity\Utilisateur;
 use App\Enum\ActionAudit;
 use App\Repository\UtilisateurRepository;
 use App\Security\JournalAuditLogger;
+use Scheb\TwoFactorBundle\Security\Authentication\Token\TwoFactorTokenInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use App\Security\CompteNonActiveException;
 use Symfony\Component\Security\Core\Exception\DisabledException;
 use Symfony\Component\Security\Core\Exception\InvalidCsrfTokenException;
 use Symfony\Component\Security\Core\Exception\TooManyLoginAttemptsAuthenticationException;
@@ -38,6 +40,12 @@ final class AuthentificationAuditSubscriber implements EventSubscriberInterface
 
     public function surConnexionReussie(LoginSuccessEvent $event): void
     {
+        // Administrateur : le mot de passe est bon, mais le code TOTP n'est pas encore saisi.
+        // La connexion n'est pas terminée ; elle sera notée quand le code aura été accepté.
+        if ($event->getAuthenticatedToken() instanceof TwoFactorTokenInterface) {
+            return;
+        }
+
         $utilisateur = $event->getUser();
 
         $this->journal->tracer(
@@ -56,6 +64,7 @@ final class AuthentificationAuditSubscriber implements EventSubscriberInterface
         $action = match (true) {
             $origine instanceof TooManyLoginAttemptsAuthenticationException => ActionAudit::ConnexionBloquee,
             $origine instanceof DisabledException => ActionAudit::ConnexionCompteDesactive,
+            $origine instanceof CompteNonActiveException => ActionAudit::ConnexionCompteNonActive,
             $origine instanceof InvalidCsrfTokenException => ActionAudit::ConnexionCsrfInvalide,
             default => ActionAudit::ConnexionEchouee,
         };

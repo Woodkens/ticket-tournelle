@@ -15,9 +15,9 @@ use Symfony\Component\HttpFoundation\RequestStack;
  *  - la table journal_audit (ajout seul pour le compte SQL tt_app) ;
  *  - le fichier security.log (canal Monolog « audit »).
  *
- * Ce qui est enregistré : action, adresse IP, date, compte concerné s'il est connu (ENF-15).
- * Ce qui ne l'est JAMAIS : le mot de passe, ni l'identifiant saisi quand il est inconnu
- * (il arrive qu'on tape son mot de passe dans le champ e-mail) — ENF-17.
+ * Ce qui est enregistré : action, adresse IP, date, acteur, cible et une courte précision (ENF-15).
+ * Ce qui ne l'est JAMAIS : mot de passe, jeton de lien, secret ou code TOTP, code de secours,
+ * ni l'identifiant saisi quand il est inconnu (ENF-17).
  */
 final class JournalAuditLogger
 {
@@ -37,11 +37,12 @@ final class JournalAuditLogger
         ?Utilisateur $acteur = null,
         ?string $cibleType = null,
         ?int $cibleId = null,
+        ?string $detail = null,
     ): void {
         $ip = $this->requestStack->getMainRequest()?->getClientIp() ?? self::IP_CONSOLE;
 
         // 1) En base : Doctrine envoie un INSERT préparé (aucune concaténation SQL)
-        $this->entityManager->persist(new JournalAudit($action->value, $ip, $acteur, $cibleType, $cibleId));
+        $this->entityManager->persist(new JournalAudit($action->value, $ip, $acteur, $cibleType, $cibleId, $detail));
         $this->entityManager->flush();
 
         // 2) Dans le fichier : seulement des identifiants numériques, pas de donnée personnelle
@@ -50,6 +51,13 @@ final class JournalAuditLogger
             'id_acteur' => $acteur?->getId(),
             'cible_type' => $cibleType,
             'cible_id' => $cibleId,
+            'detail' => $detail,
         ]);
+    }
+
+    /** Raccourci pour une action qui vise un compte : la cible est toujours « utilisateur » + son numéro. */
+    public function tracerCompte(ActionAudit $action, ?Utilisateur $acteur, Utilisateur $cible, ?string $detail = null): void
+    {
+        $this->tracer($action, $acteur, 'utilisateur', $cible->getId(), $detail);
     }
 }
