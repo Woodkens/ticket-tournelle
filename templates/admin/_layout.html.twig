@@ -1,0 +1,17 @@
+{# Gabarit commun des pages d'administration : sous-menu de la maquette W6 #}
+{% extends 'base.html.twig' %}
+
+{% block sous_menu %}
+    <div class="bg-white border-bottom">
+        <nav class="container" aria-label="{{ 'admin.menu.label'|trans }}">
+            <ul class="nav tt-sous-menu">
+                <li class="nav-item">
+                    <a class="nav-link active" aria-current="page" href="{{ path('app_admin_comptes') }}">{{ 'admin.menu.accounts'|trans }}</a>
+                </li>
+                {# Écrans des séances suivantes (US18, US19) : visibles mais inactifs #}
+                <li class="nav-item"><span class="nav-link disabled" aria-disabled="true">{{ 'admin.menu.references'|trans }}</span></li>
+                <li class="nav-item"><span class="nav-link disabled" aria-disabled="true">{{ 'admin.menu.audit'|trans }}</span></li>
+            </ul>
+        </nav>
+    </div>
+{% endblock %}

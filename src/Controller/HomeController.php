@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Utilisateur;
+use App\Security\Voter\AccesAdminVoter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,7 +13,8 @@ use Symfony\Component\Routing\Attribute\Route;
 final class HomeController extends AbstractController
 {
     /**
-     * « / » redirige vers l'accueil dans la langue du profil de la personne connectée (US03).
+     * « / » redirige vers la page de départ de la personne connectée, dans la langue de son profil (US03) :
+     * l'administration des comptes pour un administrateur, l'accueil pour les autres.
      * C'est ici qu'on arrive juste après la connexion.
      */
     #[Route('/', name: 'app_root', methods: ['GET'])]
@@ -22,6 +24,11 @@ final class HomeController extends AbstractController
         $locale = $utilisateur instanceof Utilisateur
             ? $utilisateur->getLangue()->value
             : $request->getLocale();
+
+        // Le compte administrateur ne sert qu'à administrer (C5)
+        if ($this->isGranted(AccesAdminVoter::ACCES_ADMIN)) {
+            return $this->redirectToRoute('app_admin_comptes', ['_locale' => $locale]);
+        }
 
         return $this->redirectToRoute('app_home', ['_locale' => $locale]);
     }
