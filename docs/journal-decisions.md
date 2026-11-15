@@ -145,3 +145,21 @@ Binôme : William Matondo Ngongo · Woodkens Guervil. Une entrée par choix nota
 - **Justification** : la validation reste au vert et garde donc son rôle d'alarme si une entité s'écarte du MPD. Doctrine ne connaît pas la précision à la milliseconde : le MPD reste la seule définition exacte.
 - **Lien** : D-06, ENF-15, ENF-16, MPD (table journal_audit).
 - **Auteur** : Woodkens
+
+### D-17 — Aucun script chargé depuis un CDN (polyfill importmap retiré)
+- **Date** : 15/11/2026
+- **Contexte** : AssetMapper ajoutait par défaut à chaque page un script de secours (`es-module-shims`) chargé depuis `ga.jspm.io`, pour les navigateurs qui ne connaissent pas les « importmap ».
+- **Options étudiées** : garder le script du CDN ; héberger une copie locale du script ; le retirer (`importmap_polyfill: false`).
+- **Choix** : script retiré ; un test vérifie que l'écran de connexion, l'accueil et la page 404 ne chargent aucune adresse externe.
+- **Justification** : un script venu d'un serveur tiers pourrait être modifié pour voler des sessions, et il révèle à ce tiers qui utilise le site. Les navigateurs visés (versions récentes de Firefox, Chrome, Edge) gèrent les importmap sans aide.
+- **Lien** : C3 (pas de service tiers), ENF-26, ENF-29 (CSP en S8), ENF-31, R1 §2 (dépendances tierces).
+- **Auteur** : Woodkens
+
+### D-18 — Temps de réponse du login égalisé
+- **Date** : 15/11/2026
+- **Contexte** : le message d'erreur est générique, mais un e-mail inconnu ou un compte désactivé répondait en 12 ms environ contre 90 ms pour un compte existant, car Argon2id (77 ms mesurés) n'était calculé que dans ce dernier cas.
+- **Options étudiées** : ne rien faire ; ajouter une attente fixe ou aléatoire ; calculer une empreinte Argon2id factice quand le mot de passe n'a pas été vérifié.
+- **Choix** : `TempsDeReponseConnexionSubscriber` calcule une empreinte Argon2id sur une valeur factice pour un e-mail inconnu ou un compte désactivé, avec les mêmes réglages que les vrais mots de passe.
+- **Justification** : sans cela, on devine quels comptes existent avec un simple chronomètre, ce qui annule l'intérêt du message générique. Refaire le vrai calcul suit automatiquement les réglages d'Argon2id, ce qu'une attente fixe ne ferait pas ; le test compte les calculs déclenchés, car mesurer des durées dans un test est instable.
+- **Lien** : ENF-03, ENF-01, R1 §2 (page de connexion) et annexe, R-03, D-08.
+- **Auteur** : Woodkens

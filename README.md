@@ -243,6 +243,10 @@ php bin/console cache:clear
 - **Déconnexion** : bouton de l'en-tête, en POST avec jeton CSRF ; la session est détruite côté serveur.
 - **Session** : cookie `Secure`, `HttpOnly`, `SameSite=Lax` ; 30 minutes d'inactivité (15 pour un
   administrateur), 8 heures au maximum (D-14).
+- **Temps de réponse** : pour un e-mail inconnu ou un compte désactivé, une empreinte Argon2id factice est
+  calculée, pour que la réponse dure autant que pour un compte existant (D-18).
+- **Aucun CDN** : `importmap_polyfill: false` dans `config/packages/asset_mapper.yaml` ; tout ce que la page
+  charge vient de notre serveur, vérifié par `tests/Controller/AucunAppelExterneTest.php` (D-17).
 - **Journal** : connexions, échecs, blocages, déconnexions et expirations dans la table `journal_audit`
   et dans `var/log/security.log` en développement (`/var/log/tickettournelle/security.log` en production).
 - **Schéma** : aucune migration, les tables viennent du MPD. Vérifier l'accord entités / base :
