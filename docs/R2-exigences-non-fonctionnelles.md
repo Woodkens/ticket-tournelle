@@ -16,7 +16,7 @@ Cette fiche fixe, avant le développement, les exigences de qualité et de sécu
 | --- | --- | --- |
 | ENF-01 | Hachage Argon2id avec sel unique (hasher Symfony `algorithm: argon2id`, D-08) ; aucun mot de passe stocké en clair ni chiffré de façon réversible | Lecture de la table UTILISATEUR : empreinte commençant par `$argon2id$` |
 | ENF-02 | 12 caractères minimum pour les utilisateurs, 15 pour les administrateurs ; refus des mots de passe courants ou identiques à l'identifiant | Création d'un compte avec un mot de passe de 11 caractères → refusée |
-| ENF-03 | 5 échecs en 15 minutes bloquent temporairement le compte et l'adresse IP ; message d'erreur générique | 6 essais erronés → blocage, échecs présents dans le journal |
+| ENF-03 | 5 échecs en 15 minutes pour un même couple identifiant + adresse IP bloquent la connexion jusqu'à la fin de ces 15 minutes ; 25 échecs depuis une même adresse IP la bloquent pour tous les comptes ; message d'erreur générique. Le compte n'est pas verrouillé quelle que soit l'adresse IP : n'importe qui pourrait sinon bloquer un collègue (D-11) | 6 essais erronés → blocage, échecs présents dans le journal |
 | ENF-04 | Mot de passe provisoire à changer à la première connexion ; lien de réinitialisation à usage unique qui expire | Lien réutilisé ou expiré → refusé |
 | ENF-05 | 2FA TOTP obligatoire pour les administrateurs, 8 codes de secours à usage unique | Connexion admin sans code valide → refusée |
 

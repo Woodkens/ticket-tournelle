@@ -49,9 +49,9 @@
 
 ## Commandes du projet
 - Le projet vit dans `~/ticket-tournelle` sous WSL2 / Debian 13 (pas sous Windows). Installation complète : `README.md`.
-- Tests : `php bin/phpunit`
+- Tests : `php bin/phpunit` (base `tickettournelle_test`, compte `tt_test` : `sudo deploy/dev/create-test-db.sh`, D-12)
 - Audit des dépendances : `composer audit`
 - Scan des secrets : `gitleaks detect --source . --redact` (lancé aussi par le hook `.githooks/pre-push`)
 - Cache : `php bin/console cache:clear`
 - Migrations (compte `tt_migrate`, hors projet) : `(set -a; . ~/.config/tickettournelle/migrate.env; php bin/console doctrine:migrations:migrate)`
-- Site de dev : `http://localhost/` (Nginx + PHP-FPM, config dans `deploy/dev/`)
+- Site de dev : `https://localhost/` (Nginx + PHP-FPM en HTTPS, certificat auto-signé hors dépôt, config dans `deploy/dev/`)

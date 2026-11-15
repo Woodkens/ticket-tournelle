@@ -139,7 +139,7 @@ Justification :
 - **Algorithme** : Argon2id (hasher Symfony configuré explicitement en `argon2id`, D-08), avec un sel unique par mot de passe généré automatiquement.
 - **Longueur** : 12 caractères minimum pour les utilisateurs, 15 pour les administrateurs (en plus du TOTP). La longueur protège mieux que des règles de composition compliquées.
 - **Refus** : mots de passe trop courants ou déjà présents dans des fuites connues, et mot de passe identique à l'identifiant.
-- **Blocage** : 5 échecs en 15 minutes bloquent temporairement le compte et l'adresse IP (login throttling Symfony), avec un message d'erreur générique.
+- **Blocage** : 5 échecs en 15 minutes pour un même couple identifiant + adresse IP bloquent la connexion jusqu'à la fin de ces 15 minutes, et 25 échecs depuis une même adresse IP la bloquent pour tous les comptes (login throttling standard de Symfony, D-11), avec un message d'erreur générique. Le compte n'est volontairement pas verrouillé quelle que soit l'adresse IP : n'importe qui pourrait sinon bloquer le compte d'un collègue en tapant 5 faux mots de passe.
 - **Premier accès** : mot de passe provisoire à changer obligatoirement à la première connexion.
 
 Pourquoi MD5 et SHA1 seuls ne conviennent pas : ce sont des fonctions rapides, conçues pour vérifier l'intégrité d'un fichier, pas pour stocker un mot de passe. Une carte graphique en calcule des milliards par seconde, et sans sel les tables arc-en-ciel retrouvent instantanément les mots de passe courants. Des collisions sont de plus connues pour les deux. Argon2id est volontairement lent et gourmand en mémoire, ce qui rend l'attaque par force brute très coûteuse.
@@ -164,7 +164,7 @@ Pourquoi MD5 et SHA1 seuls ne conviennent pas : ce sont des fonctions rapides, c
 
 | Quoi | Où | Qui peut modifier |
 | --- | --- | --- |
-| Connexions réussies et échouées, blocages (identifiant, IP, horodatage) | Fichier `/var/log/tickettournelle/security.log` (Monolog) | Personne via l'application ; lecture par root et le groupe adm |
+| Connexions réussies et échouées, blocages, déconnexions (compte s'il est connu, IP, horodatage) | Table `journal_audit` en base + fichier `/var/log/tickettournelle/security.log` (Monolog) | L'application peut ajouter (INSERT) mais ni modifier ni supprimer ; fichier lisible par root et le groupe adm |
 | Actions admin : création, désactivation, changement de rôle, réinitialisation | Table `journal_audit` en base + fichier | L'application peut ajouter (INSERT) mais ni modifier ni supprimer |
 | Changements de statut et d'affectation des tickets | Table `historique_statut` en base | Idem : ajout seul |
 | Refus d'accès (403, tentatives IDOR), uploads refusés | Fichier `security.log` | Personne via l'application |

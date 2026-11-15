@@ -73,3 +73,75 @@ Binôme : William Matondo Ngongo · Woodkens Guervil. Une entrée par choix nota
 - **Justification** : « auto » laisse Symfony choisir et ce choix peut changer d'une version à l'autre ; écrire l'algorithme rend l'exigence ENF-01 explicite et le test la prouve à chaque exécution.
 - **Lien** : ENF-01, R1 §6.2, D-02. Documents mis à jour : CLAUDE.md, R1 §6.2, R2 ENF-01.
 - **Auteur** : Woodkens
+
+### D-09 — Aucune hiérarchie entre les rôles
+- **Date** : 15/11/2026
+- **Contexte** : Symfony permet de faire hériter un rôle d'un autre (`role_hierarchy`) ; il fallait décider si ROLE_ADMIN ou ROLE_TECHNICIEN contiennent ROLE_USER.
+- **Options étudiées** : hiérarchie complète (admin > technicien > utilisateur) ; technicien hérite seulement d'utilisateur ; aucun héritage.
+- **Choix** : aucun héritage ; un compte a un seul rôle, « être connecté » se vérifie avec `IS_AUTHENTICATED_FULLY`, et les Voters appliqueront la matrice en S6/S7.
+- **Justification** : dans la matrice §2.1, aucun rôle ne contient tous les droits d'un autre (l'admin ne crée pas de ticket, le technicien n'annule pas, la direction ne voit pas les tickets). Un héritage donnerait donc des droits en trop sans qu'on le voie.
+- **Lien** : CdC V1.2 §2.1, C5, R1 §4 (moindre privilège).
+- **Auteur** : Woodkens
+
+### D-10 — Jeton CSRF classique (lié à la session) pour la connexion et la déconnexion
+- **Date** : 15/11/2026
+- **Contexte** : la recette Symfony 7.4 configure par défaut des jetons CSRF « sans état » (`stateless_token_ids`) pour `authenticate` et `logout`.
+- **Options étudiées** : garder les jetons sans état (contrôle des en-têtes Origin/Referer et cookie posé en JavaScript) ; jeton classique tiré au hasard et gardé dans la session.
+- **Choix** : jeton classique lié à la session pour la connexion et la déconnexion ; la déconnexion se fait uniquement en POST.
+- **Justification** : le principe s'explique en une phrase (le serveur compare le jeton du formulaire à celui de la session) et se teste simplement avec un jeton absent ou faux. Le mode sans état dépend d'un script JavaScript que le projet n'a pas.
+- **Lien** : R1 §6.1 (protection CSRF), CLAUDE.md (jeton CSRF sur tous les formulaires), `config/packages/csrf.yaml`.
+- **Auteur** : Woodkens
+
+### D-11 — Limitation des essais de connexion : comportement standard de Symfony
+- **Date** : 15/11/2026
+- **Contexte** : ENF-03 demandait de bloquer « le compte et l'adresse IP » après 5 échecs en 15 minutes ; le `login_throttling` de Symfony compte par couple e-mail + IP (5 essais) et par IP seule (25 essais).
+- **Options étudiées** : comportement standard de Symfony ; limiteur maison qui verrouille le compte quelle que soit l'adresse IP.
+- **Choix** : comportement standard (`max_attempts: 5`, `interval: 15 minutes`), avec le composant officiel `symfony/rate-limiter` ajouté avec l'accord du binôme ; le blocage dure jusqu'à la fin de la fenêtre de 15 minutes.
+- **Justification** : verrouiller un compte quelle que soit l'IP permettrait à n'importe qui de bloquer un collègue en tapant 5 fois un faux mot de passe. Le couple e-mail + IP arrête la force brute sans offrir ce moyen de nuire.
+- **Lien** : ENF-03, R1 §6.2, US09, R-03. Écart signalé : ENF-03 (R2) et R1 §6.2 mis à jour.
+- **Auteur** : Woodkens
+
+### D-12 — Base de test dédiée et compte SQL `tt_test`
+- **Date** : 15/11/2026
+- **Contexte** : les tests automatiques doivent repartir d'une base vide, mais le compte `tt_app` n'a pas le droit DELETE et ne doit pas l'avoir.
+- **Options étudiées** : donner DELETE à `tt_app` ; tests sur SQLite ; base `tickettournelle_test` avec un compte `tt_test` séparé.
+- **Choix** : base `tickettournelle_test` créée à partir du MPD et compte `tt_test` (SELECT, INSERT, UPDATE, DELETE sur cette base uniquement), mot de passe dans `.env.test.local` hors Git, le tout créé par `deploy/dev/create-test-db.sh`.
+- **Justification** : les tests tournent sur le vrai schéma MariaDB sans affaiblir le compte de l'application ni toucher aux vraies données. Limite connue : le moindre privilège de `tt_app` se vérifie à la main, pas par les tests.
+- **Lien** : ENF-16, R1 §4 (moindre privilège), ENF-11, D-06.
+- **Auteur** : Woodkens
+
+### D-13 — Certificat auto-signé (openssl) pour le HTTPS du poste de développement
+- **Date** : 15/11/2026
+- **Contexte** : le login doit être démontré en HTTPS en local, et le cookie de session est marqué Secure.
+- **Options étudiées** : mkcert (autorité locale reconnue par le navigateur) ; certificat auto-signé créé avec openssl.
+- **Choix** : certificat auto-signé openssl, rangé dans `/etc/ssl` hors du dépôt ; Nginx redirige le port 80 vers le 443 ; HSTS seulement dans le modèle de production.
+- **Justification** : aucun outil en plus, et c'est le cas prévu pour le serveur du lycée (H7) : le chiffrement est le même, seul l'avertissement du navigateur diffère. HSTS en développement forcerait HTTPS sur « localhost » pour tous les autres projets du poste.
+- **Lien** : ENF-29, ENF-06, ENF-11, CdC V1.2 H7 et C3, R1 annexe.
+- **Auteur** : Woodkens
+
+### D-14 — Expiration des sessions par un écouteur de l'application
+- **Date** : 15/11/2026
+- **Contexte** : ENF-08 impose 30 minutes d'inactivité (15 pour un administrateur) et 8 heures au maximum ; le réglage PHP `gc_maxlifetime` seul ne garantit pas ces délais et ne distingue pas les rôles.
+- **Options étudiées** : s'appuyer seulement sur `gc_maxlifetime` ; durée du cookie ; écouteur qui compare l'heure à chaque requête.
+- **Choix** : `SessionExpirationSubscriber` note l'heure de connexion et de dernière activité dans la session, puis détruit la session et renvoie vers la connexion si un délai est dépassé (tracé `SESSION_EXPIRED`).
+- **Justification** : le nettoyage des sessions par PHP est aléatoire et un cookie peut être rejoué ; seul un contrôle côté serveur à chaque requête est fiable. Le délai par rôle prépare déjà les 15 minutes des administrateurs.
+- **Lien** : ENF-08, ENF-09, R1 §6.3, CdC V1.2 §7.2.
+- **Auteur** : Woodkens
+
+### D-15 — Pas de compte administrateur avant la TOTP (S6)
+- **Date** : 15/11/2026
+- **Contexte** : la commande `app:create-user` crée le premier compte en S5, alors que la double authentification des administrateurs n'arrive qu'en S6 (D-07).
+- **Options étudiées** : autoriser la création d'un admin dès la S5 ; refuser ROLE_ADMIN jusqu'à la S6.
+- **Choix** : la commande refuse ROLE_ADMIN ; le mot de passe est saisi en caché, jamais en argument, avec 12 caractères minimum, différent de l'identifiant, et une solidité estimée sur le serveur (`PasswordStrength`).
+- **Justification** : ainsi il n'existe à aucun moment un administrateur protégé par un simple mot de passe. La solidité est calculée localement pour ne dépendre d'aucun service extérieur ; la liste des mots de passe déjà fuités (ENF-02) reste à traiter en S6.
+- **Lien** : ENF-02, ENF-05, C5, D-07, CdC V1.2 §7.2.
+- **Auteur** : Woodkens
+
+### D-16 — Validation du schéma limitée aux tables déjà mappées
+- **Date** : 15/11/2026
+- **Contexte** : `doctrine:schema:validate` proposait de supprimer les 8 tables du MPD qui n'ont pas encore d'entité, et signalait un écart permanent sur `journal_audit.date_action` (DATETIME(3)).
+- **Options étudiées** : mapper les 10 tables dès la S5 ; ignorer le résultat de la validation ; filtrer les tables comparées (`schema_filter`) et recopier la valeur par défaut telle que Doctrine la lit.
+- **Choix** : `schema_filter` limité à `utilisateur` et `journal_audit`, à élargir à chaque séance ; pour `date_action`, la colonne est remplie par MariaDB et le mapping recopie la valeur par défaut lue par Doctrine.
+- **Justification** : la validation reste au vert et garde donc son rôle d'alarme si une entité s'écarte du MPD. Doctrine ne connaît pas la précision à la milliseconde : le MPD reste la seule définition exacte.
+- **Lien** : D-06, ENF-15, ENF-16, MPD (table journal_audit).
+- **Auteur** : Woodkens

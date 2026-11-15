@@ -158,7 +158,7 @@ unset APP_SECRET PW_APP PW_MIG
 (set -a; . ~/.config/tickettournelle/migrate.env; php bin/console doctrine:migrations:migrate)
 ```
 
-### B.6 Nginx + PHP-FPM (site de dev sur http://localhost/)
+### B.6 Nginx + PHP-FPM en HTTPS (site de dev sur https://localhost/)
 
 Les fichiers versionnés `deploy/dev/` sont installés par un script (le chemin et l'utilisateur sont
 remplacés automatiquement) :
@@ -167,9 +167,35 @@ remplacés automatiquement) :
 sudo deploy/dev/install-web.sh
 ```
 
-Ce que fait la configuration : seul `public/` est exposé, seul `index.php` est exécuté (tout autre `.php`
-→ 404, scénario R1 §3.4), fichiers cachés (`.env`, `.git`) refusés, version de Nginx masquée,
-pièces jointes limitées à 5 Mo. HTTPS, HSTS et CSP arrivent en S5/S8.
+Ce que fait le script :
+
+- il crée, s'il n'existe pas, un **certificat auto-signé** avec `openssl` (`deploy/dev/make-cert.sh`), rangé
+  dans `/etc/ssl/certs/tickettournelle-dev.crt` et `/etc/ssl/private/tickettournelle-dev.key` (clé lisible
+  par root seulement), donc **hors du dépôt Git** (D-13) ;
+- il installe la configuration Nginx : le port 80 **redirige** vers le 443, TLS 1.2 et 1.3 uniquement ;
+- seul `public/` est exposé, seul `index.php` est exécuté (tout autre `.php` → 404, scénario R1 §3.4),
+  fichiers cachés (`.env`, `.git`) refusés, version de Nginx masquée, pièces jointes limitées à 5 Mo.
+
+Au premier accès à `https://localhost/`, le navigateur affiche un avertissement (émetteur inconnu) :
+c'est normal pour un certificat auto-signé, on l'accepte une fois. Le chiffrement est le même.
+
+**Pas de HSTS en développement** : le navigateur retiendrait « localhost = HTTPS obligatoire » pour tous
+les autres projets du poste. HSTS et les en-têtes de sécurité sont dans le modèle de production
+`deploy/prod/nginx-tickettournelle.conf` (non installé sur le poste) ; la CSP arrive en S8.
+
+### B.7 Base de test et compte `tt_test` (D-12)
+
+Les tests automatiques repartent d'une base vide à chaque test : il leur faut le droit DELETE, que le
+compte de l'application `tt_app` n'a pas et ne doit pas avoir. Ils utilisent donc une base à part :
+
+```bash
+sudo deploy/dev/create-test-db.sh
+```
+
+Le script crée la base `tickettournelle_test` (copie exacte du MPD), le compte `tt_test`
+(SELECT, INSERT, UPDATE, DELETE sur cette base **uniquement**) et écrit son mot de passe, tiré au hasard
+et jamais affiché, dans `.env.test.local` (droits 600, ignoré par Git). Il peut être relancé après une
+modification du MPD : il recrée la base de test à neuf.
 
 ---
 
@@ -207,10 +233,36 @@ php bin/console cache:clear
 - `config/packages/security.yaml` : `algorithm: argon2id` explicite (D-08 : « auto » donnait bcrypt).
 - Page d'accueil `/fr` et `/en` ; `/` redirige selon la langue du navigateur ; autre langue → 404.
 
-### C.4 Vérifications (à relancer après chaque modification)
+### C.4 Authentification (S5)
+
+- **Connexion** : `/fr/login` et `/en/login` (`/login` redirige selon la langue du navigateur). Pare-feu
+  `form_login` dans `config/packages/security.yaml` : jeton CSRF lié à la session (D-10), message d'erreur
+  générique, 5 essais par e-mail + adresse IP sur 15 minutes (D-11), compte désactivé refusé.
+- **Protégé par défaut** : toute page exige d'être connecté (`IS_AUTHENTICATED_FULLY`), sauf l'écran de
+  connexion. Aucune hiérarchie de rôles (D-09).
+- **Déconnexion** : bouton de l'en-tête, en POST avec jeton CSRF ; la session est détruite côté serveur.
+- **Session** : cookie `Secure`, `HttpOnly`, `SameSite=Lax` ; 30 minutes d'inactivité (15 pour un
+  administrateur), 8 heures au maximum (D-14).
+- **Journal** : connexions, échecs, blocages, déconnexions et expirations dans la table `journal_audit`
+  et dans `var/log/security.log` en développement (`/var/log/tickettournelle/security.log` en production).
+- **Schéma** : aucune migration, les tables viennent du MPD. Vérifier l'accord entités / base :
 
 ```bash
-php bin/phpunit                                    # 6 tests : accueil FR/EN, redirection, Argon2id
+php bin/console doctrine:schema:validate
+```
+
+- **Créer un compte** (le premier, avant l'écran d'administration de S6). Le mot de passe est demandé en
+  saisie cachée dans le terminal, deux fois ; il n'existe aucune option pour le passer en argument.
+  `ROLE_ADMIN` est refusé jusqu'à la S6 (TOTP obligatoire, D-15).
+
+```bash
+php bin/console app:create-user prenom.nom@exemple.fr Nom Prenom --role=ROLE_USER --langue=fr
+```
+
+### C.5 Vérifications (à relancer après chaque modification)
+
+```bash
+php bin/phpunit                                    # connexion, CSRF, blocage, session, commande, pages d'erreur (B.7 requis)
 composer audit                                     # 0 vulnérabilité attendue (ENF-23)
 gitleaks detect --source . --redact --no-banner    # 0 fuite attendue (ENF-11)
 git check-ignore -v .env.local                     # doit afficher la règle du .gitignore
