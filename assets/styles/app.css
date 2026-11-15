@@ -1,3 +1,66 @@
+/*
+ * Thème Ticket'Tournelle : Bootstrap 5 + quelques réglages de la maquette (H11).
+ * Bleu du lycée : #1d4ed8, fond gris clair, cartes blanches à coins arrondis.
+ */
+:root {
+    --tt-bleu: #1d4ed8;
+    --tt-bleu-fonce: #1e40af;
+    --tt-fond: #f3f4f6;
+    --tt-bordure: #d1d5db;
+    --bs-link-color-rgb: 29, 78, 216;
+    --bs-link-hover-color-rgb: 30, 64, 175;
+}
+
 body {
-    background-color: skyblue;
+    background-color: var(--tt-fond);
+}
+
+.navbar-brand {
+    color: var(--tt-bleu);
+}
+
+/* Bouton principal au bleu de la maquette (contraste suffisant avec le texte blanc, ENF-28) */
+.btn-primary {
+    --bs-btn-bg: var(--tt-bleu);
+    --bs-btn-border-color: var(--tt-bleu);
+    --bs-btn-hover-bg: var(--tt-bleu-fonce);
+    --bs-btn-hover-border-color: var(--tt-bleu-fonce);
+    --bs-btn-active-bg: var(--tt-bleu-fonce);
+    --bs-btn-active-border-color: var(--tt-bleu-fonce);
+    --bs-btn-disabled-bg: var(--tt-bleu);
+    --bs-btn-disabled-border-color: var(--tt-bleu);
+    min-height: 44px;
+}
+
+/* Carte centrée (connexion, pages d'erreur) */
+.tt-carte {
+    max-width: 420px;
+    border: 1px solid var(--tt-bordure);
+    border-radius: 0.75rem;
+}
+
+/* Champs de 44 px de haut : confortables au doigt sur smartphone (ENF-26) */
+.tt-carte .form-control {
+    min-height: 44px;
+}
+
+/* Sélecteur « Français | English » */
+.tt-langues .nav-link {
+    padding: 0.25rem 0.5rem;
+    color: var(--bs-secondary-color);
+}
+
+.tt-langues .nav-link.active {
+    color: var(--tt-bleu);
+    font-weight: 600;
+}
+
+.tt-langues .nav-item + .nav-item {
+    border-left: 1px solid var(--tt-bordure);
+}
+
+/* « Mot de passe oublié ? » : visible mais inactif jusqu'à la S6 */
+.tt-lien-inactif {
+    color: var(--bs-secondary-color);
+    cursor: not-allowed;
 }

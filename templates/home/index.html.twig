@@ -3,4 +3,5 @@
 {% block body %}
     <h1 class="h3">{{ 'home.title'|trans }}</h1>
     <p class="lead">{{ 'home.intro'|trans }}</p>
+    <p class="text-secondary">{{ 'home.connected_as'|trans({'%nom%': app.user.prenom ~ ' ' ~ app.user.nom}) }}</p>
 {% endblock %}

@@ -9,24 +9,55 @@
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
     </head>
-    <body>
-        <nav class="navbar navbar-expand bg-body-tertiary border-bottom">
-            <div class="container">
-                <span class="navbar-brand">{{ 'app.name'|trans }}</span>
-                <div class="navbar-nav ms-auto" aria-label="{{ 'nav.language'|trans }}">
-                    {% for locale in ['fr', 'en'] %}
-                        <a class="nav-link{{ app.request.locale == locale ? ' active' }}"
-                           href="{{ path('app_home', {_locale: locale}) }}"
-                           hreflang="{{ locale }}"
-                           {% if app.request.locale == locale %}aria-current="page"{% endif %}>
-                            {{ ('nav.locale.' ~ locale)|trans }}
-                        </a>
-                    {% endfor %}
+    <body class="d-flex flex-column min-vh-100">
+        <header class="bg-white border-bottom">
+            <nav class="navbar container" aria-label="{{ 'nav.main'|trans }}">
+                <a class="navbar-brand fw-semibold" href="{{ path('app_root') }}">{{ 'app.name'|trans }}</a>
+
+                <div class="d-flex align-items-center gap-3 ms-auto">
+                    {# Bloc vidé par les pages d'erreur : elles ne dépendent ni de la session ni de la base #}
+                    {% block nav_utilisateur %}
+                        {% if app.user %}
+                            <span class="small text-secondary d-none d-sm-inline">{{ app.user.prenom }} {{ app.user.nom }}</span>
+                            {# Déconnexion en POST + jeton CSRF : un simple lien ne peut pas déconnecter quelqu'un #}
+                            <form method="post" action="{{ path('app_logout') }}" class="m-0">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">{{ 'nav.logout'|trans }}</button>
+                            </form>
+                        {% endif %}
+                    {% endblock %}
+
+                    {# Sélecteur de langue : même page dans l'autre langue quand c'est possible, sinon l'accueil #}
+                    {% set route_courante = app.current_route %}
+                    {% set parametres_courants = app.current_route_parameters %}
+                    <ul class="nav tt-langues" aria-label="{{ 'nav.language'|trans }}">
+                        {% for locale in ['fr', 'en'] %}
+                            {% if route_courante and parametres_courants._locale is defined %}
+                                {% set lien = path(route_courante, parametres_courants|merge({_locale: locale})) %}
+                            {% else %}
+                                {% set lien = path('app_home', {_locale: locale}) %}
+                            {% endif %}
+                            <li class="nav-item">
+                                <a class="nav-link{{ app.request.locale == locale ? ' active' }}"
+                                   href="{{ lien }}"
+                                   hreflang="{{ locale }}"
+                                   lang="{{ locale }}"
+                                   {% if app.request.locale == locale %}aria-current="true"{% endif %}>
+                                    {{- ('nav.locale.' ~ locale)|trans -}}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
                 </div>
-            </div>
-        </nav>
-        <main class="container py-4">
+            </nav>
+        </header>
+
+        <main class="container py-5 flex-grow-1">
             {% block body %}{% endblock %}
         </main>
+
+        <footer class="py-3 text-center small text-secondary">
+            {{ 'footer.text'|trans }}
+        </footer>
     </body>
 </html>
