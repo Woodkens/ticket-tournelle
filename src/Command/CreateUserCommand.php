@@ -6,7 +6,9 @@ use App\Entity\Utilisateur;
 use App\Enum\ActionAudit;
 use App\Enum\Langue;
 use App\Enum\Role;
-use App\Repository\UtilisateurRepository;
+use App\Security\Compte\GestionComptes;
+use App\Security\Compte\PolitiqueMotDePasse;
+use App\Security\Compte\RegleCompteException;
 use App\Security\JournalAuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -20,12 +22,17 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Crée un compte depuis le terminal du serveur (premier compte, avant l'écran d'administration de S6).
+ * Crée un compte depuis le terminal du serveur : sert surtout au PREMIER compte administrateur,
+ * avant que l'écran d'administration soit utilisable.
  *
  * Le mot de passe est demandé en saisie cachée, deux fois. Il n'existe AUCUNE option pour le passer
  * en argument : il resterait sinon dans l'historique du shell et dans la liste des processus.
+ *
+ * Compte administrateur (C5) : adresse dédiée, 15 caractères minimum, et l'enrôlement TOTP est forcé
+ * à la première connexion (aucun accès avant).
  */
 #[AsCommand(
     name: 'app:create-user',
@@ -33,14 +40,16 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 )]
 final class CreateUserCommand extends Command
 {
-    /** ENF-02 : 12 caractères minimum (15 pour un administrateur, à partir de S6). */
-    public const LONGUEUR_MIN_MDP = 12;
+    /** Les messages de la console sont en français : elle n'est utilisée que par le binôme, sur le serveur. */
+    private const LANGUE_CONSOLE = 'fr';
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly UtilisateurRepository $utilisateurs,
+        private readonly GestionComptes $comptes,
+        private readonly PolitiqueMotDePasse $politique,
         private readonly UserPasswordHasherInterface $hasher,
         private readonly ValidatorInterface $validator,
+        private readonly TranslatorInterface $translator,
         private readonly JournalAuditLogger $journal,
     ) {
         parent::__construct();
@@ -52,7 +61,7 @@ final class CreateUserCommand extends Command
             ->addArgument('email', InputArgument::OPTIONAL, 'Adresse e-mail professionnelle (identifiant de connexion)')
             ->addArgument('nom', InputArgument::OPTIONAL, 'Nom')
             ->addArgument('prenom', InputArgument::OPTIONAL, 'Prénom')
-            ->addOption('role', null, InputOption::VALUE_REQUIRED, 'ROLE_USER, ROLE_TECHNICIEN ou ROLE_DIRECTION', Role::User->value)
+            ->addOption('role', null, InputOption::VALUE_REQUIRED, 'ROLE_USER, ROLE_TECHNICIEN, ROLE_DIRECTION ou ROLE_ADMIN', Role::User->value)
             ->addOption('langue', null, InputOption::VALUE_REQUIRED, 'fr ou en', Langue::Fr->value);
     }
 
@@ -70,14 +79,7 @@ final class CreateUserCommand extends Command
         $role = Role::tryFrom((string) $input->getOption('role'));
         $langue = Langue::tryFrom((string) $input->getOption('langue'));
         if (null === $role || null === $langue) {
-            $io->error('Rôle ou langue inconnu. Rôles : ROLE_USER, ROLE_TECHNICIEN, ROLE_DIRECTION. Langues : fr, en.');
-
-            return Command::FAILURE;
-        }
-
-        // Aucun administrateur sans TOTP : la création des comptes admin arrive en S6 (D-07, ENF-05).
-        if (Role::Admin === $role) {
-            $io->error('Les comptes administrateurs seront créés en S6, avec la double authentification TOTP obligatoire.');
+            $io->error('Rôle ou langue inconnu. Rôles : ROLE_USER, ROLE_TECHNICIEN, ROLE_DIRECTION, ROLE_ADMIN. Langues : fr, en.');
 
             return Command::FAILURE;
         }
@@ -95,13 +97,19 @@ final class CreateUserCommand extends Command
             return Command::FAILURE;
         }
 
-        if (null !== $this->utilisateurs->findOneByEmail($email)) {
-            $io->error('Un compte existe déjà avec cette adresse e-mail.');
+        // Adresse libre, et adresse dédiée obligatoire pour un administrateur (D-19)
+        try {
+            $this->comptes->verifierAdresse($email, $role);
+        } catch (RegleCompteException $refus) {
+            $io->error($this->translator->trans($refus->getMessage(), $refus->parametres, 'validators', self::LANGUE_CONSOLE));
 
             return Command::FAILURE;
         }
 
-        $motDePasse = $this->demanderEnCache($io, sprintf('Mot de passe (%d caractères minimum, saisie cachée)', self::LONGUEUR_MIN_MDP));
+        $compte = new Utilisateur($email, $nom, $prenom, $role);
+        $compte->setLangue($langue);
+
+        $motDePasse = $this->demanderEnCache($io, sprintf('Mot de passe (%d caractères minimum, saisie cachée)', $this->politique->longueurMinimale($compte)));
         $confirmation = $this->demanderEnCache($io, 'Confirmation du mot de passe');
 
         if ($motDePasse !== $confirmation) {
@@ -110,26 +118,31 @@ final class CreateUserCommand extends Command
             return Command::FAILURE;
         }
 
-        $erreurs = $this->verifierMotDePasse($motDePasse, $email);
-        if ([] !== $erreurs) {
-            $io->error(['Mot de passe refusé (ENF-02) :', ...$erreurs]);
+        // Même politique que sur le site (ENF-02) : longueur, liste locale, informations personnelles, solidité
+        $refus = $this->politique->verifier($motDePasse, $compte);
+        if ([] !== $refus) {
+            $io->error([
+                'Mot de passe refusé (ENF-02) :',
+                ...array_map(fn ($message): string => $message->trans($this->translator, self::LANGUE_CONSOLE), $refus),
+            ]);
 
             return Command::FAILURE;
         }
 
-        $utilisateur = new Utilisateur($email, $nom, $prenom, $role);
-        $utilisateur->setLangue($langue);
         // Seule l'empreinte Argon2id est enregistrée (ENF-01)
-        $utilisateur->setMotDePasseHash($this->hasher->hashPassword($utilisateur, $motDePasse));
-        // La personne vient de choisir elle-même son mot de passe : il n'est pas provisoire (ENF-04)
-        $utilisateur->setDoitChangerMdp(false);
+        $compte->setMotDePasseHash($this->hasher->hashPassword($compte, $motDePasse));
+        // La personne vient de choisir elle-même son mot de passe : pas de lien d'activation à attendre (ENF-04)
+        $compte->setDoitChangerMdp(false);
 
-        $this->entityManager->persist($utilisateur);
+        $this->entityManager->persist($compte);
         $this->entityManager->flush();
 
-        $this->journal->tracer(ActionAudit::CompteCree, null, 'utilisateur', $utilisateur->getId());
+        $this->journal->tracerCompte(ActionAudit::CompteCree, null, $compte, sprintf('%s (console)', $role->value));
 
         $io->success(sprintf('Compte créé : %s (%s).', $email, $role->value));
+        if ($compte->estAdmin()) {
+            $io->note('Compte administrateur : à la première connexion, l\'activation de la double authentification (QR code) sera obligatoire.');
+        }
 
         return Command::SUCCESS;
     }
@@ -144,34 +157,6 @@ final class CreateUserCommand extends Command
 
         // On garde les espaces éventuels du mot de passe, mais pas le retour à la ligne de la touche Entrée
         return rtrim((string) $io->askQuestion($question), "\r\n");
-    }
-
-    /**
-     * Politique de mot de passe (ENF-02, R1 §6.2) : longueur, différent de l'identifiant,
-     * et solidité estimée sur le serveur lui-même (aucun appel à un service extérieur).
-     *
-     * @return list<string>
-     */
-    private function verifierMotDePasse(string $motDePasse, string $email): array
-    {
-        // Partie de l'e-mail avant le « @ » (ex. « prenom.nom ») : interdite dans le mot de passe
-        $identifiant = (string) strstr($email, '@', true);
-        $minuscules = mb_strtolower($motDePasse);
-        if ($minuscules === $email || (mb_strlen($identifiant) >= 4 && str_contains($minuscules, $identifiant))) {
-            return ['Le mot de passe ne doit pas reprendre l\'identifiant.'];
-        }
-
-        return $this->verifier($motDePasse, [
-            new Assert\Length(
-                min: self::LONGUEUR_MIN_MDP,
-                max: 4096,
-                minMessage: 'Le mot de passe doit contenir au moins {{ limit }} caractères.',
-            ),
-            new Assert\PasswordStrength(
-                minScore: Assert\PasswordStrength::STRENGTH_MEDIUM,
-                message: 'Le mot de passe est trop simple à deviner : mélangez davantage de caractères différents.',
-            ),
-        ]);
     }
 
     /**

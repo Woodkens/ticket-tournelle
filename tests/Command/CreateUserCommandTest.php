@@ -10,14 +10,17 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /**
- * Commande app:create-user : mot de passe saisi en caché, politique ENF-02, pas d'admin avant la S6.
+ * Commande app:create-user : mot de passe saisi en caché, politique ENF-02,
+ * et compte administrateur conforme à C5 (adresse dédiée, 15 caractères, enrôlement TOTP à venir).
  */
 final class CreateUserCommandTest extends KernelTestCase
 {
     use BaseDeTestTrait;
 
     private const EMAIL = 'premier.compte@latournelle.example';
+    private const EMAIL_ADMIN = 'premier.compte+admin@latournelle.example';
     private const ARGUMENTS = ['email' => self::EMAIL, 'nom' => 'Compte', 'prenom' => 'Premier'];
+    private const ARGUMENTS_ADMIN = ['email' => self::EMAIL_ADMIN, 'nom' => 'Compte', 'prenom' => 'Premier', '--role' => 'ROLE_ADMIN'];
 
     private CommandTester $commande;
 
@@ -51,20 +54,54 @@ final class CreateUserCommandTest extends KernelTestCase
         self::assertSame('USER_CREATED', $journal[0]['action']);
         self::assertSame('utilisateur', $journal[0]['cible_type']);
         self::assertEquals($utilisateur->getId(), $journal[0]['cible_id']);
+        self::assertSame('ROLE_USER (console)', $journal[0]['detail']);
     }
 
-    public function testRoleAdministrateurRefuseJusquALaS6(): void
+    public function testCreationDUnAdministrateur(): void
+    {
+        $motDePasse = $this->motDePasseAleatoire(); // 29 caractères
+        $this->commande->setInputs([$motDePasse, $motDePasse]);
+
+        self::assertSame(0, $this->commande->execute(self::ARGUMENTS_ADMIN));
+
+        $admin = $this->compte(self::EMAIL_ADMIN);
+        self::assertNotNull($admin);
+        self::assertTrue($admin->estAdmin());
+        // Pas encore de TOTP : l'enrôlement sera forcé à la première connexion
+        self::assertFalse($admin->isTotpActif());
+        self::assertTrue($admin->doitEnrolerTotp());
+        self::assertStringContainsString('double authentification', $this->normaliser($this->commande->getDisplay()));
+    }
+
+    public function testUnAdministrateurDoitAvoirUneAdresseDediee(): void
     {
         $code = $this->commande->execute(self::ARGUMENTS + ['--role' => 'ROLE_ADMIN']);
 
         self::assertSame(1, $code);
-        self::assertStringContainsString('TOTP', $this->commande->getDisplay());
+        self::assertStringContainsString('adresse dédiée', $this->normaliser($this->commande->getDisplay()));
         self::assertNull($this->compte());
+    }
+
+    public function testUneAdresseDAdministrateurEstRefuseePourUnAutreRole(): void
+    {
+        $code = $this->commande->execute(['--role' => 'ROLE_TECHNICIEN'] + self::ARGUMENTS_ADMIN);
+
+        self::assertSame(1, $code);
+        self::assertNull($this->compte(self::EMAIL_ADMIN));
+    }
+
+    public function testUnAdministrateurDoitChoisirQuinzeCaracteres(): void
+    {
+        $this->commande->setInputs(['Tq!9-xbWzr4kPm', 'Tq!9-xbWzr4kPm']); // 14 caractères
+
+        self::assertSame(1, $this->commande->execute(self::ARGUMENTS_ADMIN));
+        self::assertStringContainsString('au moins 15 caractères', $this->normaliser($this->commande->getDisplay()));
+        self::assertNull($this->compte(self::EMAIL_ADMIN));
     }
 
     public function testMotDePasseTropCourtRefuse(): void
     {
-        $this->commande->setInputs(['Tt!9-abcdef', 'Tt!9-abcdef']); // 11 caractères
+        $this->commande->setInputs(['Tq!9-xbWzr4', 'Tq!9-xbWzr4']); // 11 caractères
 
         self::assertSame(1, $this->commande->execute(self::ARGUMENTS));
         self::assertStringContainsString('au moins 12 caractères', $this->normaliser($this->commande->getDisplay()));
@@ -76,6 +113,16 @@ final class CreateUserCommandTest extends KernelTestCase
         $this->commande->setInputs(['aaaaaaaaaaaaaaaa', 'aaaaaaaaaaaaaaaa']);
 
         self::assertSame(1, $this->commande->execute(self::ARGUMENTS));
+        self::assertNull($this->compte());
+    }
+
+    public function testMotDePasseCourantRefuse(): void
+    {
+        // Présent dans la liste locale config/securite/mots-de-passe-courants.txt
+        $this->commande->setInputs(['motdepasse123', 'motdepasse123']);
+
+        self::assertSame(1, $this->commande->execute(self::ARGUMENTS));
+        self::assertStringContainsString('les plus courants', $this->normaliser($this->commande->getDisplay()));
         self::assertNull($this->compte());
     }
 
@@ -112,9 +159,9 @@ final class CreateUserCommandTest extends KernelTestCase
         self::assertNull($this->compte());
     }
 
-    private function compte(): ?Utilisateur
+    private function compte(string $email = self::EMAIL): ?Utilisateur
     {
-        return static::getContainer()->get(UtilisateurRepository::class)->findOneByEmail(self::EMAIL);
+        return static::getContainer()->get(UtilisateurRepository::class)->findOneByEmail($email);
     }
 
     /** Les messages de la console sont coupés sur plusieurs lignes : on les remet sur une seule. */
