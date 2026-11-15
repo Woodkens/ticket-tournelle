@@ -95,7 +95,7 @@ Chaque principe est traduit en une action précise sur un élément précis de T
 | 3. Réduction de surface | Le pare-feu (ufw) n'ouvre que le port 443 aux utilisateurs, plus le 80 redirigé vers 443. SSH n'est ouvert qu'au réseau d'administration, MariaDB écoute en local, et il n'y a pas de phpMyAdmin en production. |
 | 4. Cloisonnement | Les pièces jointes sont stockées hors du dossier web (`/var/lib/tickettournelle/uploads`). Les logs appartiennent à un autre compte que l'application (root:adm). L'espace /admin a son propre rôle et sa propre règle d'accès dans la configuration de sécurité Symfony (access\_control). |
 | 5. Security by Design | Le contrôle d'accès par ticket (Voter Symfony « voir / modifier / clôturer ») est conçu dans le MCD et les user stories, avant la première ligne de code. Les menaces sont analysées dans ce R1, avant le développement. |
-| 6. Security by Default | Tout nouveau compte reçoit le rôle le plus faible (utilisateur) et un mot de passe à changer dès la première connexion. Les cookies sont Secure, HttpOnly et SameSite, le debug est désactivé et HTTPS est forcé (HSTS) sans action de l'administrateur. |
+| 6. Security by Default | Tout nouveau compte reçoit le rôle le plus faible (utilisateur) et aucun mot de passe utilisable : son titulaire choisit le sien par un lien d'activation à usage unique (D-20). Les cookies sont Secure, HttpOnly et SameSite, le debug est désactivé et HTTPS est forcé (HSTS) sans action de l'administrateur. |
 
 ## Section 5 — Réponse aux contraintes cyber du MOA
 
@@ -138,9 +138,9 @@ Justification :
 
 - **Algorithme** : Argon2id (hasher Symfony configuré explicitement en `argon2id`, D-08), avec un sel unique par mot de passe généré automatiquement.
 - **Longueur** : 12 caractères minimum pour les utilisateurs, 15 pour les administrateurs (en plus du TOTP). La longueur protège mieux que des règles de composition compliquées.
-- **Refus** : mots de passe trop courants ou déjà présents dans des fuites connues, et mot de passe identique à l'identifiant.
+- **Refus** : mots de passe présents dans une liste locale de mots de passe courants (liste SecLists filtrée, gardée dans le dépôt : aucun appel à un service extérieur, D-23), mots de passe qui contiennent le nom, le prénom, l'identifiant ou un mot lié au lycée, et saisies trop répétitives.
 - **Blocage** : 5 échecs en 15 minutes pour un même couple identifiant + adresse IP bloquent la connexion jusqu'à la fin de ces 15 minutes, et 25 échecs depuis une même adresse IP la bloquent pour tous les comptes (login throttling standard de Symfony, D-11), avec un message d'erreur générique. Le compte n'est volontairement pas verrouillé quelle que soit l'adresse IP : n'importe qui pourrait sinon bloquer le compte d'un collègue en tapant 5 faux mots de passe.
-- **Premier accès** : mot de passe provisoire à changer obligatoirement à la première connexion.
+- **Premier accès** : aucun mot de passe provisoire ne circule. À la création du compte, la personne reçoit un lien d'activation à usage unique, valable 72 h, et choisit elle-même son mot de passe ; d'ici là, la connexion est refusée. « Mot de passe oublié » utilise le même mécanisme, avec un lien valable 30 minutes (D-20).
 
 Pourquoi MD5 et SHA1 seuls ne conviennent pas : ce sont des fonctions rapides, conçues pour vérifier l'intégrité d'un fichier, pas pour stocker un mot de passe. Une carte graphique en calcule des milliards par seconde, et sans sel les tables arc-en-ciel retrouvent instantanément les mots de passe courants. Des collisions sont de plus connues pour les deux. Argon2id est volontairement lent et gourmand en mémoire, ce qui rend l'attaque par force brute très coûteuse.
 

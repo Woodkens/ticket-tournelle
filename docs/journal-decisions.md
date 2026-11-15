@@ -163,3 +163,75 @@ Binôme : William Matondo Ngongo · Woodkens Guervil. Une entrée par choix nota
 - **Justification** : sans cela, on devine quels comptes existent avec un simple chronomètre, ce qui annule l'intérêt du message générique. Refaire le vrai calcul suit automatiquement les réglages d'Argon2id, ce qu'une attente fixe ne ferait pas ; le test compte les calculs déclenchés, car mesurer des durées dans un test est instable.
 - **Lien** : ENF-03, ENF-01, R1 §2 (page de connexion) et annexe, R-03, D-08.
 - **Auteur** : Woodkens
+
+### D-19 — Comptes administrateurs séparés par une adresse e-mail dédiée
+- **Date** : 15/11/2026
+- **Contexte** : C5 impose un compte administrateur distinct du compte utilisateur de la même personne, alors que l'e-mail est l'identifiant de connexion et qu'il est unique en base.
+- **Options étudiées** : ajouter une colonne `identifiant` distincte de l'e-mail ; adresse dédiée par sous-adressage (`prenom.nom+admin@…`) ; alias créé par le lycée (`adm-prenom.nom@…`).
+- **Choix** : adresse dédiée, dont la forme est un paramètre de configuration (`app.comptes.motif_email_admin`, sous-adressage par défaut) ; un compte existant ne peut pas être promu administrateur, et l'import CSV n'en crée jamais.
+- **Justification** : la contrainte UNIQUE de la base garantit déjà deux comptes séparés, sans toucher au schéma ni à l'écran de connexion, et les e-mails arrivent dans la boîte habituelle. Comme la convention est un réglage, on passe à un alias sans modifier le code si la messagerie du lycée refuse le sous-adressage.
+- **Lien** : C5, CdC V1.2 §7.2 et H14 (hypothèse à valider par le MOA), R1 §3.3, `config/services.yaml`.
+- **Auteur** : William
+
+### D-20 — Activation par lien, sans mot de passe provisoire
+- **Date** : 15/11/2026
+- **Contexte** : ENF-04 prévoyait un mot de passe provisoire à changer à la première connexion ; il aurait fallu le transmettre à 200 personnes.
+- **Options étudiées** : mot de passe provisoire envoyé par e-mail ; mot de passe provisoire remis par l'administrateur ; lien d'activation à usage unique, le titulaire choisissant son mot de passe.
+- **Choix** : lien d'activation (72 h) et lien de réinitialisation (30 min) à usage unique, jeton de 256 bits dont seule l'empreinte SHA-256 est stockée, tout nouveau lien annulant les précédents ; `doit_changer_mdp = vrai` signifie « mot de passe pas encore choisi » et la connexion est alors refusée.
+- **Justification** : aucun mot de passe ne circule et personne d'autre que le titulaire ne le connaît. Un hachage rapide suffit pour le jeton, car il est aléatoire et bien trop long pour être deviné, contrairement à un mot de passe choisi par un humain.
+- **Lien** : ENF-04, US06, US10, C1, R1 §6.2. Écart signalé : ENF-04 (R2), R1 §4 et §6.2, MPD mis à jour.
+- **Auteur** : Woodkens
+
+### D-21 — TOTP : secret chiffré, codes de secours hachés, un code ne sert qu'une fois
+- **Date** : 15/11/2026
+- **Contexte** : scheb/2fa-bundle vérifie les codes TOTP, mais il range le secret en clair, n'empêche pas de rejouer un code et ne limite pas les essais.
+- **Options étudiées** : utiliser le bundle tel quel ; protection contre le rejeu par le cache du bundle ; notre classe de vérification avec secret chiffré et dernier créneau noté en base.
+- **Choix** : `AuthentificateurTotp` remplace la vérification du bundle : secret chiffré avec libsodium (clé `TOTP_ENCRYPTION_KEY` dans `.env.local`), colonne `totp_dernier_creneau` mise à jour en une seule requête, 5 codes faux en 15 minutes bloquent la saisie, 8 codes de secours hachés en Argon2id, enrôlement forcé à la première connexion.
+- **Justification** : le secret doit être relu pour recalculer le code, donc on le chiffre au lieu de le hacher, et une base volée sans la clé ne donne rien. Noter le créneau en base, et non dans un cache, garantit qu'un code vu par-dessus l'épaule ne peut pas resservir, même si le cache est vidé.
+- **Lien** : ENF-05, C5, CdC V1.2 §7.1, R1 §3.3, D-07, MPD (`ck_totp_secret`).
+- **Auteur** : William
+
+### D-22 — Première migration du schéma
+- **Date** : 15/11/2026
+- **Contexte** : le MPD ne prévoyait rien pour les liens d'activation, les codes de secours, l'anti-rejeu TOTP ni le détail d'une action d'audit.
+- **Options étudiées** : tout ranger dans des colonnes de `utilisateur` ; deux tables dédiées et deux colonnes ; calculer la « dernière connexion » avec une colonne de plus ou à partir du journal.
+- **Choix** : tables `jeton_compte` et `code_secours`, colonnes `utilisateur.totp_dernier_creneau` et `journal_audit.detail` ; le MPD est modifié d'abord, la migration le reproduit et se lance avec `tt_migrate` ; la dernière connexion est lue dans `journal_audit`, sans colonne en plus.
+- **Justification** : des tables dédiées gardent l'historique sans jamais supprimer de ligne (un jeton ou un code utilisé est seulement daté). `tt_migrate` n'a pas le droit GRANT : c'est root qui donne à `tt_app` ses droits sur les nouvelles tables, sans DELETE, avec `deploy/dev/grant-app.sh`.
+- **Lien** : D-06, D-16, ENF-16, CdC V1.2 §6, R1 §4 (moindre privilège).
+- **Auteur** : William
+
+### D-23 — Mots de passe fuités : liste locale plutôt qu'un service en ligne
+- **Date** : 15/11/2026
+- **Contexte** : ENF-02 demande de refuser les mots de passe courants ou déjà fuités (point laissé ouvert par D-15).
+- **Options étudiées** : contrainte `NotCompromisedPassword` de Symfony (appel au service Have I Been Pwned, en k-anonymat) ; liste locale de mots de passe courants.
+- **Choix** : liste locale `config/securite/mots-de-passe-courants.txt` (SecLists, licence MIT, 46 000 entrées de 12 caractères ou plus), complétée par le refus du nom, du prénom, de l'identifiant et des mots du lycée, et par `PasswordStrength` au seuil « faible » (60 bits).
+- **Justification** : le service en ligne couvre beaucoup plus de mots de passe, mais chaque choix de mot de passe appellerait un serveur tiers, ce que C3 et D-17 interdisent, et une panne obligerait à tout accepter ou tout refuser. Le seuil de solidité supérieur de Symfony refuserait tout mot de passe de 12 caractères, même aléatoire, et contredirait ENF-02.
+- **Lien** : ENF-02, C3, D-15, D-17, R1 §6.2. Écart signalé : ENF-02 (R2) et R1 §6.2 mis à jour.
+- **Auteur** : Woodkens
+
+### D-24 — E-mails bilingues, sans SMTP en développement, envoyés après la réponse
+- **Date** : 15/11/2026
+- **Contexte** : les e-mails d'activation et de réinitialisation doivent exister en français et en anglais (C2), et « mot de passe oublié » ne doit pas révéler quels comptes existent.
+- **Options étudiées** : e-mail dans la langue de la page ; e-mail dans la langue du profil du destinataire ; envoi pendant la requête ou après la réponse.
+- **Choix** : Symfony Mailer avec des gabarits Twig traduits, dans la langue du profil ; `MAILER_DSN=null://null` en développement (e-mails visibles dans le profiler) ; pour « mot de passe oublié », le lien et l'e-mail sont préparés après l'envoi de la réponse hors mode debug, et la page répond la même chose dans tous les cas.
+- **Justification** : c'est le destinataire qui lit l'e-mail, pas l'administrateur qui crée le compte. Préparer l'e-mail après la réponse évite qu'un chronomètre distingue un compte existant d'un compte inconnu, comme pour la connexion (D-18).
+- **Lien** : C2, ENF-27, ENF-04, R1 §2 (notifications e-mail), H6, R-07, D-18.
+- **Auteur** : Woodkens
+
+### D-25 — Import CSV : aperçu avant écriture et « tout ou rien »
+- **Date** : 15/11/2026
+- **Contexte** : les comptes des 200 personnels sont créés à partir d'un fichier CSV (C1, H3), qui peut contenir des erreurs.
+- **Options étudiées** : créer les lignes valides et ignorer les autres ; refuser tout le fichier à la première erreur sans détail ; aperçu avec les erreurs ligne par ligne, puis création de tous les comptes ou d'aucun.
+- **Choix** : l'envoi du fichier ne fait que le vérifier et montre un aperçu ; la confirmation revérifie les lignes puis crée tous les comptes dans une seule transaction ; l'import refuse le rôle administrateur et les adresses d'administrateur.
+- **Justification** : avec « tout ou rien », l'administrateur sait exactement ce qui est en base : soit le fichier entier, soit rien, jamais un import à moitié fait à rattraper à la main. Refuser les administrateurs à l'import évite qu'un simple fichier donne les pleins pouvoirs.
+- **Lien** : C1, C5, CdC V1.2 H3, US06, D-19.
+- **Auteur** : Woodkens
+
+### D-26 — Dates enregistrées en temps universel (UTC), affichées à l'heure de Paris
+- **Date** : 15/11/2026
+- **Contexte** : un test sur l'expiration des liens a montré une heure d'écart entre PHP (UTC) et MariaDB (heure du serveur, CET) : les dates posées par la base (journal d'audit) et celles écrites par PHP (expiration des jetons) ne parlaient pas de la même heure.
+- **Options étudiées** : tout régler à l'heure de Paris ; tout enregistrer en UTC et convertir à l'affichage ; laisser l'écart.
+- **Choix** : PHP est fixé en UTC dans `src/Kernel.php`, MariaDB passe en UTC à chaque connexion (`SET time_zone` dans `doctrine.yaml`) et Twig affiche les dates à l'heure de Paris (`twig.date.timezone`).
+- **Justification** : l'UTC n'a pas de changement d'heure, donc une durée (72 h, 30 min, 15 min d'inactivité) se calcule toujours juste et le journal d'audit n'a jamais d'heure en double à la fin d'octobre. Seul l'affichage dépend du lieu, et il est réglé à un seul endroit.
+- **Lien** : ENF-04, ENF-08, ENF-15, D-20, MPD (`journal_audit.date_action`).
+- **Auteur** : binôme

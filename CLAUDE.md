@@ -53,5 +53,5 @@
 - Audit des dépendances : `composer audit`
 - Scan des secrets : `gitleaks detect --source . --redact` (lancé aussi par le hook `.githooks/pre-push`)
 - Cache : `php bin/console cache:clear`
-- Migrations (compte `tt_migrate`, hors projet) : `(set -a; . ~/.config/tickettournelle/migrate.env; php bin/console doctrine:migrations:migrate)`
+- Migrations (compte `tt_migrate`, hors projet) : `(set -a; . ~/.config/tickettournelle/migrate.env; php bin/console doctrine:migrations:migrate)`, puis `sudo deploy/dev/grant-app.sh` si une table a été créée (D-22)
 - Site de dev : `https://localhost/` (Nginx + PHP-FPM en HTTPS, certificat auto-signé hors dépôt, config dans `deploy/dev/`)

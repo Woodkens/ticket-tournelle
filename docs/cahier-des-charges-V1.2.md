@@ -174,6 +174,8 @@ Le modèle de la V1.1 est conservé (10 entités) ; le MCD est simplement redess
 
 **Lecture** : un utilisateur déclare 0 à n tickets, un ticket a exactement 1 déclarant ; un ticket a 0 ou 1 technicien assigné. Chaque ticket possède au moins son statut initial dans HISTORIQUE\_STATUT. NOTIFICATION trace les envois e-mail et dans l'application (US05, US08) ; JOURNAL\_AUDIT trace les actions sensibles (comptes, rôles, clôtures), avec un acteur facultatif car un échec de connexion peut venir d'un identifiant inconnu. EQUIPEMENT est rattaché à une salle et, optionnellement, à un ticket. Pas de suppression physique : `actif` sur les comptes, ticket archivé au statut « Clôturé ».
 
+**Ajouts de la S6 (D-22)** : JETON\_COMPTE garde l'empreinte des liens d'activation et de réinitialisation (un utilisateur a 0 à n jetons, un jeton concerne exactement 1 utilisateur) ; CODE\_SECOURS garde l'empreinte des codes de secours de la double authentification (un utilisateur a 0 à n codes). UTILISATEUR reçoit `totp_dernier_creneau` (anti-rejeu des codes TOTP) et JOURNAL\_AUDIT reçoit `detail`. Le MPD (`docs/ticket_tournelle_mpd.sql`) fait référence.
+
 Ajouts V1.2 : `impact`, `urgence` et `date_cloture` sur TICKET (section 4.2 et indicateurs), `libelle_fr` / `libelle_en` sur CATEGORIE (C2), `doit_changer_mdp` sur UTILISATEUR (mot de passe provisoire à changer, ENF-04 du R2). L'auteur d'une ligne d'HISTORIQUE\_STATUT devient facultatif (0,1) : une clôture automatique après 5 jours ouvrés n'a pas d'auteur humain.
 
 ### 6.1 MLD
@@ -223,6 +225,8 @@ Pourquoi pas Debian 12 (V1.1) : son support régulier a pris fin le 12 juillet 2
 - Mot de passe d'au moins 15 caractères + TOTP, déconnexion après 15 minutes d'inactivité.
 - Chaque action d'administration est inscrite dans JOURNAL\_AUDIT, que l'application ne peut ni modifier ni supprimer.
 - Revue des comptes admin à chaque départ d'un personnel.
+- Le compte administrateur se distingue par son **adresse e-mail dédiée** (H14) : l'application refuse de donner le rôle administrateur à un compte existant, et l'import CSV ne crée jamais d'administrateur (D-19).
+- À la première connexion, l'enrôlement TOTP est obligatoire avant tout autre accès ; un code ne sert qu'une fois, et les 8 codes de secours sont stockés hachés (D-21).
 
 ## 8. Planning et répartition dans le binôme
 
@@ -291,6 +295,7 @@ Les questions de la V1.1 ont été posées au MOA en séance. Pour chaque point 
 | H11 | Maquettes | Wireframes W1 à W7 retenus ; thème Bootstrap sobre, logo du lycée s'il est fourni | §5 |
 | H12 | Recette | En S9, avec le binôme et les évaluateurs comme utilisateurs tests | §8 |
 | H13 | Incidents « Infrastructures » | Déclarés dans Ticket'Tournelle, puis traités ou transmis par les référents au service concerné | §4.1 |
+| H14 | Adresse des comptes administrateurs | Le compte administrateur d'une personne utilise une adresse dédiée par sous-adressage (`prenom.nom+admin@…`), qui arrive dans sa boîte habituelle ; à valider par le MOA. Si la messagerie du lycée ne l'accepte pas, un alias `adm-prenom.nom@…` est créé : la convention est un réglage de l'application (D-19) | §7.2, C5, H6 |
 
 ## 11. Conformité aux contraintes du MOA
 
