@@ -52,6 +52,10 @@ class JournalAudit
     #[ORM\Column(type: Types::INTEGER, nullable: true, options: ['unsigned' => true])]
     private ?int $cibleId;
 
+    /** Précision utile à la lecture (ex. « ROLE_USER > ROLE_TECHNICIEN »). Jamais de secret ni de code. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $detail;
+
     /** NULL quand l'identifiant saisi ne correspond à aucun compte (échec de connexion anonyme). */
     #[ORM\ManyToOne(targetEntity: Utilisateur::class)]
     #[ORM\JoinColumn(name: 'id_acteur', referencedColumnName: 'id_utilisateur', nullable: true, onDelete: 'RESTRICT')]
@@ -63,12 +67,14 @@ class JournalAudit
         ?Utilisateur $acteur = null,
         ?string $cibleType = null,
         ?int $cibleId = null,
+        ?string $detail = null,
     ) {
         $this->action = $action;
         $this->ip = $ip;
         $this->acteur = $acteur;
         $this->cibleType = $cibleType;
         $this->cibleId = $cibleId;
+        $this->detail = null !== $detail ? mb_substr($detail, 0, 255) : null;
     }
 
     public function getId(): ?int
@@ -99,6 +105,11 @@ class JournalAudit
     public function getCibleId(): ?int
     {
         return $this->cibleId;
+    }
+
+    public function getDetail(): ?string
+    {
+        return $this->detail;
     }
 
     public function getActeur(): ?Utilisateur

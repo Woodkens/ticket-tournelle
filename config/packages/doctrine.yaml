@@ -11,7 +11,7 @@ doctrine:
         # Doctrine ne compare que les tables déjà décrites par une entité (D-06).
         # Liste à compléter à chaque séance, jusqu'à couvrir les 10 tables du MPD.
         # Sans ce filtre, doctrine:schema:validate proposerait de SUPPRIMER les tables sans entité.
-        schema_filter: '~^(utilisateur|journal_audit)$~'
+        schema_filter: '~^(utilisateur|journal_audit|jeton_compte|code_secours)$~'
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore

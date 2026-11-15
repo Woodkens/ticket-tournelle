@@ -7,6 +7,9 @@ use App\Enum\Role;
 use App\Repository\UtilisateurRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Scheb\TwoFactorBundle\Model\Totp\TotpConfiguration;
+use Scheb\TwoFactorBundle\Model\Totp\TotpConfigurationInterface;
+use Scheb\TwoFactorBundle\Model\Totp\TwoFactorInterface;
 use Symfony\Component\Security\Core\User\EquatableInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -20,7 +23,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\Table(name: 'utilisateur')]
 #[ORM\UniqueConstraint(name: 'uq_utilisateur_email', columns: ['email'])]
 #[ORM\Index(name: 'idx_utilisateur_role', columns: ['role', 'actif'])]
-class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface
+class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, EquatableInterface, TwoFactorInterface
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -51,16 +54,24 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
     #[ORM\Column(length: 255)]
     private string $motDePasseHash = '';
 
-    /** Mot de passe provisoire à changer (ENF-04) : écran prévu en S6. */
+    /**
+     * VRAI tant que le titulaire n'a pas choisi son mot de passe avec le lien d'activation (ENF-04, D-20).
+     * Dans cet état, la connexion est refusée.
+     */
     #[ORM\Column(options: ['default' => true])]
     private bool $doitChangerMdp = true;
 
-    /** Point d'extension S6 (D-07) : secret TOTP chiffré, utilisé par scheb/2fa-bundle. */
+    /** Secret TOTP CHIFFRÉ (ENF-05, D-21). Seul App\Security\Totp\ChiffreurTotp sait le déchiffrer. */
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $totpSecret = null;
 
+    /** VRAI quand l'administrateur a terminé son enrôlement (QR code scanné + premier code correct). */
     #[ORM\Column(options: ['default' => false])]
     private bool $totpActif = false;
+
+    /** Numéro du dernier créneau de 30 secondes accepté : un même code ne peut pas servir deux fois. */
+    #[ORM\Column(type: Types::INTEGER, nullable: true, options: ['unsigned' => true])]
+    private ?int $totpDernierCreneau = null;
 
     public function __construct(string $email, string $nom, string $prenom, Role $role = Role::User)
     {
@@ -95,6 +106,16 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
         return $this->role;
     }
 
+    public function setRole(Role $role): void
+    {
+        $this->role = $role;
+    }
+
+    public function estAdmin(): bool
+    {
+        return Role::Admin === $this->role;
+    }
+
     public function getLangue(): Langue
     {
         return $this->langue;
@@ -126,14 +147,86 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
         $this->doitChangerMdp = $doitChangerMdp;
     }
 
+    public function setMotDePasseHash(string $empreinte): void
+    {
+        $this->motDePasseHash = $empreinte;
+    }
+
+    // ----- Double authentification TOTP (administrateurs) -----
+
     public function isTotpActif(): bool
     {
         return $this->totpActif;
     }
 
-    public function setMotDePasseHash(string $empreinte): void
+    /** Secret tel qu'il est en base : chiffré. */
+    public function getTotpSecret(): ?string
     {
-        $this->motDePasseHash = $empreinte;
+        return $this->totpSecret;
+    }
+
+    /** Début de l'enrôlement : on enregistre le secret chiffré, la 2FA n'est pas encore active. */
+    public function preparerTotp(string $secretChiffre): void
+    {
+        $this->totpSecret = $secretChiffre;
+        $this->totpActif = false;
+        $this->totpDernierCreneau = null;
+    }
+
+    /** Fin de l'enrôlement : le premier code était correct. La base exige qu'un secret existe (ck_totp_secret). */
+    public function activerTotp(): void
+    {
+        if (null === $this->totpSecret) {
+            throw new \LogicException('Impossible d\'activer la TOTP sans secret.');
+        }
+
+        $this->totpActif = true;
+    }
+
+    /** Réinitialisation par un autre administrateur : l'enrôlement sera redemandé à la prochaine connexion. */
+    public function reinitialiserTotp(): void
+    {
+        $this->totpActif = false;
+        $this->totpSecret = null;
+        $this->totpDernierCreneau = null;
+    }
+
+    public function getTotpDernierCreneau(): ?int
+    {
+        return $this->totpDernierCreneau;
+    }
+
+    /** Un administrateur qui n'a pas terminé son enrôlement n'a accès à rien d'autre (C5). */
+    public function doitEnrolerTotp(): bool
+    {
+        return $this->estAdmin() && !$this->totpActif;
+    }
+
+    // ----- Méthodes demandées par scheb/2fa-bundle -----
+
+    /** La 2FA est demandée à la connexion pour tout administrateur enrôlé. */
+    public function isTotpAuthenticationEnabled(): bool
+    {
+        return $this->estAdmin() && $this->totpActif;
+    }
+
+    public function getTotpAuthenticationUsername(): string
+    {
+        return $this->email;
+    }
+
+    /**
+     * Le bundle veut savoir qu'un secret existe. On lui remet le secret CHIFFRÉ, inutilisable tel quel :
+     * la vérification des codes est faite par notre classe App\Security\Totp\AuthentificateurTotp,
+     * qui déchiffre le secret seulement au moment du calcul.
+     */
+    public function getTotpAuthenticationConfiguration(): ?TotpConfigurationInterface
+    {
+        if (null === $this->totpSecret || '' === $this->totpSecret) {
+            return null;
+        }
+
+        return new TotpConfiguration($this->totpSecret, TotpConfiguration::ALGORITHM_SHA1, 30, 6);
     }
 
     // ----- Méthodes demandées par Symfony Security -----
@@ -179,5 +272,35 @@ class Utilisateur implements UserInterface, PasswordAuthenticatedUserInterface, 
             && $user->role === $this->role
             && $user->actif
             && $this->actif;
+    }
+
+    /**
+     * Ce qui est rangé dans la session : le strict nécessaire pour retrouver le compte et le comparer
+     * (isEqualTo). Le secret TOTP, même chiffré, n'y est jamais copié ; le compte complet est relu
+     * en base à chaque requête.
+     *
+     * @return array{id: ?int, email: string, motDePasseHash: string, role: string, actif: bool}
+     */
+    public function __serialize(): array
+    {
+        return [
+            'id' => $this->id,
+            'email' => $this->email,
+            'motDePasseHash' => $this->motDePasseHash,
+            'role' => $this->role->value,
+            'actif' => $this->actif,
+        ];
+    }
+
+    /** @param array{id: ?int, email: string, motDePasseHash: string, role: string, actif: bool} $donnees */
+    public function __unserialize(array $donnees): void
+    {
+        $this->id = $donnees['id'];
+        $this->email = $donnees['email'];
+        $this->motDePasseHash = $donnees['motDePasseHash'];
+        $this->role = Role::from($donnees['role']);
+        $this->actif = $donnees['actif'];
+        $this->nom = '';
+        $this->prenom = '';
     }
 }
