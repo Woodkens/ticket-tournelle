@@ -2,31 +2,37 @@
 
 namespace App\Tests\Controller;
 
-use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use App\Tests\Support\FonctionnelTestCase;
 
-final class HomeControllerTest extends WebTestCase
+/**
+ * Accueil bilingue (C2). Depuis la S5, l'accueil exige d'être connecté.
+ */
+final class HomeControllerTest extends FonctionnelTestCase
 {
+    private const EMAIL = 'camille.durand@latournelle.example';
+
     public function testRacineRedirigeVersLeFrancaisPourUneLangueNonGeree(): void
     {
-        // Le client de test envoie « en-us » par défaut : on force une langue non gérée.
-        $client = static::createClient();
-        $client->request('GET', '/', server: ['HTTP_ACCEPT_LANGUAGE' => 'de-DE,de;q=0.9']);
+        // Visiteur non connecté, navigateur en allemand : écran de connexion en français
+        $this->client->request('GET', '/', server: ['HTTP_ACCEPT_LANGUAGE' => 'de-DE,de;q=0.9']);
 
-        self::assertResponseRedirects('/fr');
+        self::assertResponseRedirects('/fr/login');
     }
 
     public function testRacineRespecteLaLangueAnglaiseDuNavigateur(): void
     {
-        $client = static::createClient();
-        $client->request('GET', '/', server: ['HTTP_ACCEPT_LANGUAGE' => 'en-GB,en;q=0.9']);
+        $this->client->request('GET', '/', server: ['HTTP_ACCEPT_LANGUAGE' => 'en-GB,en;q=0.9']);
 
-        self::assertResponseRedirects('/en');
+        self::assertResponseRedirects('/en/login');
     }
 
     public function testAccueilEnFrancais(): void
     {
-        $client = static::createClient();
-        $client->request('GET', '/fr');
+        $motDePasse = $this->motDePasseAleatoire();
+        $this->creerUtilisateur(self::EMAIL, $motDePasse);
+        $this->seConnecter(self::EMAIL, $motDePasse);
+
+        $this->client->request('GET', '/fr');
 
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('h1', 'Bienvenue sur Ticket\'Tournelle');
@@ -35,18 +41,22 @@ final class HomeControllerTest extends WebTestCase
 
     public function testAccueilEnAnglais(): void
     {
-        $client = static::createClient();
-        $client->request('GET', '/en');
+        $motDePasse = $this->motDePasseAleatoire();
+        $this->creerUtilisateur(self::EMAIL, $motDePasse);
+        $this->seConnecter(self::EMAIL, $motDePasse);
+
+        $this->client->request('GET', '/en');
 
         self::assertResponseIsSuccessful();
         self::assertSelectorTextContains('h1', 'Welcome to Ticket\'Tournelle');
         self::assertSelectorExists('html[lang="en"]');
+        // Le sélecteur de langue garde la page courante
+        self::assertSelectorExists('.tt-langues a[href="/fr"]');
     }
 
     public function testLangueNonPriseEnChargeDonne404(): void
     {
-        $client = static::createClient();
-        $client->request('GET', '/de');
+        $this->client->request('GET', '/de');
 
         self::assertResponseStatusCodeSame(404);
     }

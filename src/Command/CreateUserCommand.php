@@ -142,7 +142,8 @@ final class CreateUserCommand extends Command
             ->setHiddenFallback(false)
             ->setTrimmable(false);
 
-        return (string) $io->askQuestion($question);
+        // On garde les espaces éventuels du mot de passe, mais pas le retour à la ligne de la touche Entrée
+        return rtrim((string) $io->askQuestion($question), "\r\n");
     }
 
     /**
