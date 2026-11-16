@@ -170,7 +170,7 @@ Ajustement V1.2 à reporter sur W2 : le champ « Priorité » est précédé des
 
 Le modèle de la V1.1 est conservé (10 entités), complété en S6 par JETON\_COMPTE et CODE\_SECOURS (12 entités, voir le MLD et D-22). Le MCD est simplement redessiné sans clés étrangères, qui n'apparaissent qu'au MLD. Cardinalités « min,max » notées du côté de l'entité concernée.
 
-&#91;embedded content: MCD · 10 entités de la V1.2 (les 2 entités ajoutées en S6 figurent au MLD)\]
+&#91;embedded content: MCD · 10 entités et 15 associations de la V1.2 (identifiants en gras ; les 2 entités ajoutées en S6 figurent au MLD)\]
 
 **Lecture** : un utilisateur déclare 0 à n tickets, un ticket a exactement 1 déclarant ; un ticket a 0 ou 1 technicien assigné. Chaque ticket possède au moins son statut initial dans HISTORIQUE\_STATUT. NOTIFICATION trace les envois e-mail et dans l'application (US05, US08) ; JOURNAL\_AUDIT trace les actions sensibles (comptes, rôles, clôtures), avec un acteur facultatif car un échec de connexion peut venir d'un identifiant inconnu. EQUIPEMENT est rattaché à une salle et, optionnellement, à un ticket. Pas de suppression physique : `actif` sur les comptes, ticket archivé au statut « Clôturé ».
 
