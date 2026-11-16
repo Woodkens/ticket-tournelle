@@ -187,7 +187,7 @@ Le jury demande de justifier, pas de réciter. Voici les questions les plus prob
 
 | Question probable | Idée clé de la réponse |
 | --- | --- |
-| Pourquoi Argon2id et pas bcrypt ? | Les deux sont acceptables. Argon2id est en plus coûteux en mémoire, ce qui gêne les attaques par carte graphique. bcrypt tronque aussi les mots de passe au-delà de 72 octets. Argon2id a gagné la Password Hashing Competition et Symfony l'utilise par défaut. |
+| Pourquoi Argon2id et pas bcrypt ? | Les deux sont acceptables. Argon2id est en plus coûteux en mémoire, ce qui gêne les attaques par carte graphique. bcrypt tronque aussi les mots de passe au-delà de 72 octets. Argon2id a gagné la Password Hashing Competition. On le configure explicitement dans Symfony, car le mode « auto » choisissait bcrypt ; un test vérifie que les empreintes commencent bien par $argon2id$ (D-08). |
 | Comment testez-vous l'IDOR ? | Deux comptes A et B. A crée un ticket et note son numéro. B, connecté, saisit l'URL de ce ticket : il doit recevoir un 403, et le refus doit apparaître dans security.log. Capture d'écran dans le R4. |
 | Que faire si un log est corrompu ? | Le log est une preuve : on le compare au second support (table en base et fichier), on part de la dernière sauvegarde saine, et on traite l'altération elle-même comme un incident. C'est pourquoi l'application ne peut pas modifier ses propres logs. |
 | Pourquoi un compte admin séparé du compte utilisateur ? | Un compte qui sert tous les jours (e-mails, navigation) est plus exposé. Séparé, le compte admin ne sert qu'à administrer : moins d'exposition et des traces claires. |

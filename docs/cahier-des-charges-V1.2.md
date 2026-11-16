@@ -176,13 +176,15 @@ Le modèle de la V1.1 est conservé (10 entités) ; le MCD est simplement redess
 
 **Ajouts de la S6 (D-22)** : JETON\_COMPTE garde l'empreinte des liens d'activation et de réinitialisation (un utilisateur a 0 à n jetons, un jeton concerne exactement 1 utilisateur) ; CODE\_SECOURS garde l'empreinte des codes de secours de la double authentification (un utilisateur a 0 à n codes). UTILISATEUR reçoit `totp_dernier_creneau` (anti-rejeu des codes TOTP) et JOURNAL\_AUDIT reçoit `detail`. Le MPD (`docs/ticket_tournelle_mpd.sql`) fait référence.
 
-Ajouts V1.2 : `impact`, `urgence` et `date_cloture` sur TICKET (section 4.2 et indicateurs), `libelle_fr` / `libelle_en` sur CATEGORIE (C2), `doit_changer_mdp` sur UTILISATEUR (mot de passe provisoire à changer, ENF-04 du R2). L'auteur d'une ligne d'HISTORIQUE\_STATUT devient facultatif (0,1) : une clôture automatique après 5 jours ouvrés n'a pas d'auteur humain.
+Ajouts V1.2 : `impact`, `urgence` et `date_cloture` sur TICKET (section 4.2 et indicateurs), `libelle_fr` / `libelle_en` sur CATEGORIE (C2), `doit_changer_mdp` sur UTILISATEUR (vrai tant que le titulaire n'a pas choisi son mot de passe par le lien d'activation, ENF-04 du R2, D-20). L'auteur d'une ligne d'HISTORIQUE\_STATUT devient facultatif (0,1) : une clôture automatique après 5 jours ouvrés n'a pas d'auteur humain.
 
 ### 6.1 MLD
 
 Clé primaire en gras, clé étrangère précédée de #.
 
-- UTILISATEUR (**id\_utilisateur**, nom, prenom, email, role, langue, actif, mot\_de\_passe\_hash, totp\_secret, totp\_actif, doit\_changer\_mdp)
+- UTILISATEUR (**id\_utilisateur**, nom, prenom, email, role, langue, actif, mot\_de\_passe\_hash, totp\_secret, totp\_actif, totp\_dernier\_creneau, doit\_changer\_mdp)
+- JETON\_COMPTE (**id\_jeton**, type, jeton\_hash, date\_creation, date\_expiration, date\_utilisation, #id\_utilisateur)
+- CODE\_SECOURS (**id\_code**, code\_hash, date\_creation, date\_utilisation, #id\_utilisateur)
 - CATEGORIE (**id\_categorie**, libelle\_fr, libelle\_en, actif)
 - SALLE (**id\_salle**, nom, batiment)
 - EQUIPEMENT (**id\_equipement**, type, #id\_salle)
@@ -191,9 +193,9 @@ Clé primaire en gras, clé étrangère précédée de #.
 - HISTORIQUE\_STATUT (**id\_histo**, ancien\_statut, nouveau\_statut, date\_changement, motif, #id\_ticket, #id\_auteur (null))
 - PIECE\_JOINTE (**id\_piece**, nom\_fichier, type\_mime, taille, chemin, date\_depot, #id\_ticket, #id\_auteur)
 - NOTIFICATION (**id\_notification**, canal, lue, date\_envoi, #id\_destinataire, #id\_ticket (null))
-- JOURNAL\_AUDIT (**id\_log**, date\_action, action, ip, cible\_type, cible\_id, #id\_acteur (null))
+- JOURNAL\_AUDIT (**id\_log**, date\_action, action, ip, cible\_type, cible\_id, detail, #id\_acteur (null))
 
-Points de sécurité portés par le modèle : `mot_de_passe_hash` en Argon2id, jamais le mot de passe ; `totp_secret` chiffré ; `chemin` pointe vers un nom de fichier aléatoire stocké hors de la racine web. Le MPD (types, contraintes, index) sera produit en S4.
+Points de sécurité portés par le modèle : `mot_de_passe_hash` en Argon2id, jamais le mot de passe ; `totp_secret` chiffré ; `chemin` pointe vers un nom de fichier aléatoire stocké hors de la racine web. Le MPD (types, contraintes, index), produit en S4 et complété en S6, est dans docs/ticket_tournelle_mpd.sql.
 
 ## 7. Architecture technique retenue
 
