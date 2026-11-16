@@ -1,0 +1,31 @@
+{# Saisie du code TOTP après le mot de passe (maquette W1 : « code TOTP demandé ensuite pour un admin »).
+   Les variables sont fournies par scheb/2fa-bundle. #}
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'totp.login.title'|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte mx-auto bg-white p-4">
+        <h1 class="h4 mb-1">{{ 'totp.login.title'|trans }}</h1>
+        <p class="text-secondary mb-4">{{ 'totp.login.subtitle'|trans }}</p>
+
+        {% if authenticationError %}
+            <div class="alert alert-danger" role="alert">{{ 'totp.invalid_code'|trans }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ checkPathUrl ? checkPathUrl : path(checkPathRoute) }}">
+            <div class="mb-4">
+                <label for="code" class="form-label">{{ 'totp.code'|trans }}</label>
+                <input type="text" id="code" name="{{ authCodeParameterName }}" class="form-control"
+                       autocomplete="one-time-code" maxlength="20" required autofocus>
+                <div class="form-text">{{ 'totp.login.help'|trans }}</div>
+            </div>
+
+            {% if isCsrfProtectionEnabled %}
+                <input type="hidden" name="{{ csrfParameterName }}" value="{{ csrf_token(csrfTokenId) }}">
+            {% endif %}
+
+            <button type="submit" class="btn btn-primary w-100">{{ 'totp.login.submit'|trans }}</button>
+        </form>
+    </div>
+{% endblock %}

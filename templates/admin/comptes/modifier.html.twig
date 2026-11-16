@@ -1,0 +1,26 @@
+{% extends 'admin/_layout.html.twig' %}
+
+{% block title %}{{ 'admin.edit.title'|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte tt-carte-large mx-auto bg-white p-4">
+        <h1 class="h4 mb-1">{{ 'admin.edit.title'|trans }}</h1>
+        <p class="text-secondary mb-4">
+            {{ compte.prenom }} {{ compte.nom }} · {{ compte.email }}<br>
+            {{ 'admin.edit.current_role'|trans }} <span class="badge text-bg-secondary">{{ ('role.' ~ compte.role.value)|trans }}</span>
+        </p>
+
+        {% if compte.role.value == 'ROLE_ADMIN' %}
+            <div class="alert alert-warning" role="note">{{ 'admin.edit.admin_warning'|trans }}</div>
+        {% endif %}
+
+        {{ form_start(formulaire) }}
+            {{ form_widget(formulaire) }}
+            <p class="small text-secondary">{{ 'admin.edit.no_promotion'|trans }}</p>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'admin.edit.submit'|trans }}</button>
+                <a class="btn btn-outline-secondary" href="{{ path('app_admin_comptes') }}">{{ 'admin.cancel'|trans }}</a>
+            </div>
+        {{ form_end(formulaire) }}
+    </div>
+{% endblock %}

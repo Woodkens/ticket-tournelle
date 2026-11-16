@@ -41,7 +41,7 @@ final class ConnexionTest extends FonctionnelTestCase
         $page = $this->client->followRedirect();
 
         self::assertResponseIsSuccessful();
-        self::assertStringContainsString('Camille Durand', $page->filter('header')->text());
+        self::assertStringContainsString('Camille D.', $page->filter('header')->text());
 
         // ENF-07 : l'identifiant de session a changé à la connexion
         $cookie = $this->client->getCookieJar()->get('MOCKSESSID');

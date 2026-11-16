@@ -1,5 +1,11 @@
 twig:
     file_name_pattern: '*.twig'
+    # Les formulaires Symfony sont dessinés avec les classes Bootstrap 5
+    form_themes: ['bootstrap_5_layout.html.twig']
+    # Les dates sont enregistrées en UTC (D-26) et AFFICHÉES à l'heure du lycée, été comme hiver :
+    # le filtre |date de Twig convertit chaque date vers ce fuseau, dans les pages comme dans les e-mails.
+    date:
+        timezone: Europe/Paris
 
 when@test:
     twig:

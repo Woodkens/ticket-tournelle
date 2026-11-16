@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'totp.enroll.title'|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte tt-carte-large mx-auto bg-white p-4">
+        <h1 class="h4 mb-1">{{ 'totp.enroll.title'|trans }}</h1>
+        <p class="text-secondary">{{ 'totp.enroll.subtitle'|trans }}</p>
+
+        <ol class="ps-3">
+            <li class="mb-2">{{ 'totp.enroll.step_app'|trans }}</li>
+            <li class="mb-2">
+                {{ 'totp.enroll.step_scan'|trans }}
+                {# Image dessinée par notre serveur : aucun service extérieur ne voit le secret #}
+                <div class="text-center my-3">
+                    <img src="{{ path('app_2fa_qr') }}" width="240" height="240" alt="{{ 'totp.enroll.qr_alt'|trans }}">
+                </div>
+                <p class="small text-secondary mb-0">
+                    {{ 'totp.enroll.manual'|trans }}<br>
+                    <code class="user-select-all">{{ secret }}</code>
+                </p>
+            </li>
+            <li>{{ 'totp.enroll.step_code'|trans }}</li>
+        </ol>
+
+        {% if erreur %}
+            <div class="alert alert-danger" role="alert">{{ 'totp.invalid_code'|trans }}</div>
+        {% endif %}
+
+        <form method="post" action="{{ path('app_2fa_enrolement') }}">
+            <div class="mb-3">
+                <label for="code" class="form-label">{{ 'totp.code'|trans }}</label>
+                <input type="text" id="code" name="code" class="form-control" inputmode="numeric"
+                       autocomplete="one-time-code" maxlength="7" required autofocus>
+            </div>
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token('enrolement-totp') }}">
+            <button type="submit" class="btn btn-primary w-100">{{ 'totp.enroll.submit'|trans }}</button>
+        </form>
+    </div>
+{% endblock %}

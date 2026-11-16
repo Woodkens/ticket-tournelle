@@ -1,0 +1,17 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'forgot.title'|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte mx-auto bg-white p-4">
+        <h1 class="h4 mb-1">{{ 'forgot.title'|trans }}</h1>
+        <p class="text-secondary mb-4">{{ 'forgot.subtitle'|trans }}</p>
+
+        {{ form_start(formulaire) }}
+            {{ form_row(formulaire.email) }}
+            <button type="submit" class="btn btn-primary w-100">{{ 'forgot.submit'|trans }}</button>
+        {{ form_end(formulaire) }}
+
+        <p class="text-center mt-3 mb-0"><a href="{{ path('app_login') }}">{{ 'forgot.back'|trans }}</a></p>
+    </div>
+{% endblock %}

@@ -12,14 +12,14 @@ security:
                 property: email
 
     # Message d'erreur générique (ENF-03) : Symfony ne dit jamais si le compte existe,
-    # s'il est désactivé ou si seul le mot de passe est faux.
+    # s'il est désactivé, pas encore activé, ou si seul le mot de passe est faux.
     expose_security_errors: none
 
     # Nouvel identifiant de session à chaque connexion (ENF-07, contre la fixation de session).
     session_fixation_strategy: migrate
 
     # Aucune hiérarchie de rôles (D-09) : dans la matrice du CdC §2.1, aucun rôle
-    # ne contient entièrement les droits d'un autre. Les Voters appliqueront la matrice (S6/S7).
+    # ne contient entièrement les droits d'un autre. Les Voters appliquent la matrice.
 
     firewalls:
         dev:
@@ -29,7 +29,7 @@ security:
         main:
             lazy: true
             provider: utilisateurs
-            # Refuse les comptes désactivés (actif = false)
+            # Refuse les comptes désactivés ou pas encore activés
             user_checker: App\Security\UtilisateurChecker
 
             form_login:
@@ -53,13 +53,27 @@ security:
                 enable_csrf: true
                 invalidate_session: true
 
-            # Point d'extension S6 (D-07) : la 2FA TOTP des administrateurs (scheb/2fa-bundle)
-            # se déclarera ici, avec la clé « two_factor ».
+            # Double authentification TOTP des administrateurs (ENF-05, C5, D-21) : après le mot de passe,
+            # scheb/2fa-bundle garde le compte « en attente » et n'accorde aucun rôle tant que le code
+            # n'est pas validé. Pas de « se souvenir de moi », pas d'appareil de confiance.
+            two_factor:
+                auth_form_path: 2fa_login
+                check_path: 2fa_login_check
+                enable_csrf: true
+                default_target_path: app_root
 
-    # Protégé par défaut : tout exige d'être connecté, sauf l'écran de connexion.
+    # Protégé par défaut : tout exige d'être connecté, sauf les pages listées ici.
     # Seule la PREMIÈRE règle qui correspond est appliquée.
     access_control:
         - { path: '^/(login|(fr|en)/login)$', roles: PUBLIC_ACCESS }
+        # Activation, réinitialisation, mot de passe oublié : on n'est pas encore connecté
+        - { path: '^/(fr|en)/(mot-de-passe-oublie|compte/mot-de-passe/)', roles: PUBLIC_ACCESS }
+        # La déconnexion reste possible pendant la saisie du code TOTP (elle exige toujours POST + CSRF)
+        - { path: '^/logout$', roles: PUBLIC_ACCESS }
+        # Saisie du code : réservée à un compte dont le mot de passe vient d'être vérifié
+        - { path: '^/2fa', roles: IS_AUTHENTICATED_2FA_IN_PROGRESS }
+        # Administration : rôle admin, accordé seulement une fois la 2FA validée
+        - { path: '^/(fr|en)/admin', roles: ROLE_ADMIN }
         - { path: '^/', roles: IS_AUTHENTICATED_FULLY }
 
 when@test:

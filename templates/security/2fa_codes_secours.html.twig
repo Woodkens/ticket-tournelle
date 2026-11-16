@@ -1,0 +1,20 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'totp.backup.title'|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte tt-carte-large mx-auto bg-white p-4">
+        <h1 class="h4 mb-1">{{ 'totp.backup.title'|trans }}</h1>
+        <div class="alert alert-success" role="status">{{ 'totp.backup.enrolled'|trans }}</div>
+        <p>{{ 'totp.backup.intro'|trans }}</p>
+
+        <ul class="list-unstyled row row-cols-2 g-2 font-monospace fs-5" id="codes-secours">
+            {% for code in codes %}
+                <li class="col user-select-all">{{ code }}</li>
+            {% endfor %}
+        </ul>
+
+        <div class="alert alert-warning" role="alert">{{ 'totp.backup.warning'|trans }}</div>
+        <a class="btn btn-primary w-100" href="{{ path('app_root') }}">{{ 'totp.backup.done'|trans }}</a>
+    </div>
+{% endblock %}

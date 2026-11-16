@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ 'link_invalid.title'|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte mx-auto bg-white p-4 text-center">
+        <h1 class="h4">{{ 'link_invalid.title'|trans }}</h1>
+        <p class="text-secondary">{{ 'link_invalid.text'|trans }}</p>
+        <a class="btn btn-primary" href="{{ path('app_mdp_oublie') }}">{{ 'link_invalid.new_link'|trans }}</a>
+    </div>
+{% endblock %}

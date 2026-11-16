@@ -255,18 +255,72 @@ php bin/console cache:clear
 php bin/console doctrine:schema:validate
 ```
 
-- **Créer un compte** (le premier, avant l'écran d'administration de S6). Le mot de passe est demandé en
-  saisie cachée dans le terminal, deux fois ; il n'existe aucune option pour le passer en argument.
-  `ROLE_ADMIN` est refusé jusqu'à la S6 (TOTP obligatoire, D-15).
+- **Créer un compte depuis le terminal** (sert surtout au premier administrateur). Le mot de passe est
+  demandé en saisie cachée, deux fois ; il n'existe aucune option pour le passer en argument.
 
 ```bash
 php bin/console app:create-user prenom.nom@exemple.fr Nom Prenom --role=ROLE_USER --langue=fr
 ```
 
-### C.5 Vérifications (à relancer après chaque modification)
+### C.5 Comptes, rôles et comptes administrateurs (S6)
+
+**Mise en place sur un poste** (une fois, après avoir récupéré la branche) :
 
 ```bash
-php bin/phpunit                                    # connexion, CSRF, blocage, session, commande, pages d'erreur (B.7 requis)
+# 1. Clé de chiffrement des secrets TOTP : générée sur le poste, jamais affichée, jamais dans Git (ENF-11)
+printf '\nTOTP_ENCRYPTION_KEY=%s\n' "$(openssl rand -base64 32)" >> .env.local
+# 2. Migration S6, avec le compte tt_migrate (jamais celui de l'application)
+(set -a; . ~/.config/tickettournelle/migrate.env; php bin/console doctrine:migrations:migrate --no-interaction)
+# 3. Droits de tt_app sur les nouvelles tables : SELECT, INSERT, UPDATE, jamais DELETE (tt_migrate n'a pas GRANT)
+sudo deploy/dev/grant-app.sh
+# 4. Base de test recréée à partir du MPD mis à jour
+sudo deploy/dev/create-test-db.sh
+```
+
+> Si la clé `TOTP_ENCRYPTION_KEY` est perdue ou changée, les secrets TOTP déjà enregistrés deviennent
+> illisibles : il faut réinitialiser la 2FA des administrateurs. Elle fait partie des secrets à sauvegarder.
+
+- **Schéma** (D-22) : le MPD est modifié d'abord, la migration `migrations/Version20261115200000.php` le
+  reproduit. Tables `jeton_compte` et `code_secours`, colonnes `utilisateur.totp_dernier_creneau` et
+  `journal_audit.detail`.
+- **Administration** : `/fr/admin/comptes`, réservée à `ROLE_ADMIN` avec la 2FA validée (les autres rôles
+  reçoivent un 403 journalisé). Recherche, filtres, création, changement de rôle, désactivation,
+  réactivation, réinitialisation de la 2FA d'un autre administrateur. **Aucune suppression** : ni route,
+  ni bouton, ni méthode (vérifié par `tests/Architecture/AucuneSuppressionTest.php`).
+- **Règles** (`src/Security/Compte/ReglesComptes.php`) : on ne se désactive pas soi-même, on ne retire pas
+  son propre rôle administrateur, il reste toujours un administrateur actif, et un compte existant ne
+  devient jamais administrateur.
+- **Comptes administrateurs séparés** (C5, D-19) : adresse dédiée, par défaut `prenom.nom+admin@…`.
+  La convention se règle dans `config/services.yaml` (`app.comptes.motif_email_admin`), par exemple
+  `'/^adm-/'` pour un alias `adm-prenom.nom@…`. Mot de passe de 15 caractères minimum.
+
+```bash
+php bin/console app:create-user prenom.nom+admin@exemple.fr Nom Prenom --role=ROLE_ADMIN
+```
+
+- **Double authentification** (ENF-05, D-21) : à la première connexion d'un administrateur, l'enrôlement
+  TOTP est forcé (QR code dessiné par le serveur), puis 8 codes de secours sont affichés une seule fois.
+  Secret chiffré en base, codes de secours hachés, un code ne sert qu'une fois, 5 codes faux en 15 minutes
+  bloquent la saisie. Pas de « se souvenir de moi ».
+- **Activation et mot de passe oublié** (ENF-04, D-20) : aucun mot de passe provisoire. Lien à usage unique,
+  72 h pour activer, 30 minutes pour réinitialiser ; seule l'empreinte du jeton est en base.
+- **E-mails** (D-24) : `MAILER_DSN=null://null` en développement, rien ne part. Pour lire un e-mail : dans la
+  barre de débogage Symfony, ouvrir le profiler de la requête POST qui l'a envoyé (liste « Last 10 »),
+  onglet **E-mails**. En production, le relais SMTP du lycée se règle dans `.env.local` (H6).
+- **Mots de passe courants** (ENF-02, D-23) : liste locale `config/securite/mots-de-passe-courants.txt`
+  (SecLists, licence MIT, entrées de 12 caractères ou plus). Aucun appel à un service extérieur.
+- **Import CSV** (C1, D-25) : `/fr/admin/comptes/import`, colonnes `nom;prenom;email;role`. Aperçu avec les
+  erreurs ligne par ligne avant toute écriture, puis « tout ou rien ». Jamais d'administrateur.
+  Fichier d'exemple factice : `docs/exemples/import-personnels-exemple.csv`.
+- **Journal** : chaque action d'administration est écrite dans `journal_audit` avec l'acteur, la cible,
+  l'adresse IP, la date et un détail (par exemple `ROLE_USER > ROLE_TECHNICIEN`). Jamais de secret ni de code.
+- **Dates** (D-26) : tout est enregistré en temps universel (UTC) et affiché à l'heure de Paris. Dans une
+  requête SQL faite à la main, les dates ont donc une heure de moins que la montre en hiver, deux en été.
+
+### C.6 Vérifications (à relancer après chaque modification)
+
+```bash
+php bin/phpunit                                    # connexion, 2FA, comptes, import, activation, pages d'erreur (B.7 requis)
 composer audit                                     # 0 vulnérabilité attendue (ENF-23)
 gitleaks detect --source . --redact --no-banner    # 0 fuite attendue (ENF-11)
 git check-ignore -v .env.local                     # doit afficher la règle du .gitignore

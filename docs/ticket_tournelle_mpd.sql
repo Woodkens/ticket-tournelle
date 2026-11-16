@@ -59,9 +59,10 @@ CREATE TABLE utilisateur (
   langue             ENUM('fr','en') NOT NULL DEFAULT 'fr',   -- C2
   actif              BOOLEAN      NOT NULL DEFAULT TRUE,      -- désactivation, jamais de suppression
   mot_de_passe_hash  VARCHAR(255) NOT NULL,                   -- Argon2id (ENF-01)
-  doit_changer_mdp   BOOLEAN      NOT NULL DEFAULT TRUE,      -- mot de passe provisoire (ENF-04)
+  doit_changer_mdp   BOOLEAN      NOT NULL DEFAULT TRUE,      -- TRUE = le titulaire n'a pas encore choisi son mot de passe : connexion refusée (ENF-04, D-20)
   totp_secret        VARCHAR(255) NULL,                       -- stocké chiffré (ENF-05)
   totp_actif         BOOLEAN      NOT NULL DEFAULT FALSE,
+  totp_dernier_creneau INT UNSIGNED NULL,                     -- dernier créneau de 30 s accepté : un code TOTP ne sert qu'une fois (anti-rejeu, S6)
   PRIMARY KEY (id_utilisateur),
   UNIQUE KEY uq_utilisateur_email (email),
   KEY idx_utilisateur_role (role, actif),
@@ -70,6 +71,36 @@ CREATE TABLE utilisateur (
   -- (un admin doit pouvoir exister avant d'avoir scanné son QR code) :
   -- elle est imposée par l'application, scheb/2fa-bundle, en S6 (ENF-05).
   CONSTRAINT ck_totp_secret CHECK (totp_actif = FALSE OR totp_secret IS NOT NULL)
+) ENGINE=InnoDB;
+
+-- Liens d'activation et de réinitialisation du mot de passe (S6, ENF-04, US06, US10).
+-- Le jeton envoyé par e-mail n'est JAMAIS stocké : seule son empreinte SHA-256 l'est.
+-- Usage unique : date_utilisation est remplie quand le lien a servi ou a été annulé.
+CREATE TABLE jeton_compte (
+  id_jeton          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  type              ENUM('activation','reinitialisation') NOT NULL,
+  jeton_hash        CHAR(64)     NOT NULL,          -- SHA-256 en hexadécimal du jeton aléatoire (256 bits)
+  date_creation     DATETIME     NOT NULL,
+  date_expiration   DATETIME     NOT NULL,          -- activation : 72 h ; réinitialisation : 30 min
+  date_utilisation  DATETIME     NULL,              -- NULL = encore utilisable
+  id_utilisateur    INT UNSIGNED NOT NULL,          -- concerne (1,1)
+  PRIMARY KEY (id_jeton),
+  UNIQUE KEY uq_jeton_hash (jeton_hash),
+  KEY idx_jeton_utilisateur (id_utilisateur, type),
+  CONSTRAINT fk_jeton_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur (id_utilisateur) ON DELETE RESTRICT
+) ENGINE=InnoDB;
+
+-- Codes de secours de la double authentification (S6, ENF-05) : 8 par administrateur.
+-- Stockés hachés en Argon2id comme les mots de passe ; usage unique (date_utilisation).
+CREATE TABLE code_secours (
+  id_code           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  code_hash         VARCHAR(255) NOT NULL,          -- Argon2id, jamais le code lui-même
+  date_creation     DATETIME     NOT NULL,
+  date_utilisation  DATETIME     NULL,              -- NULL = encore utilisable ; rempli = utilisé ou révoqué
+  id_utilisateur    INT UNSIGNED NOT NULL,          -- appartient à (1,1)
+  PRIMARY KEY (id_code),
+  KEY idx_code_utilisateur (id_utilisateur, date_utilisation),
+  CONSTRAINT fk_code_utilisateur FOREIGN KEY (id_utilisateur) REFERENCES utilisateur (id_utilisateur) ON DELETE RESTRICT
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------
@@ -179,6 +210,7 @@ CREATE TABLE journal_audit (
   ip           VARCHAR(45)  NOT NULL,          -- 45 = longueur max d'une adresse IPv6
   cible_type   VARCHAR(50)  NULL,              -- ex. 'utilisateur', 'ticket'
   cible_id     INT UNSIGNED NULL,
+  detail       VARCHAR(255) NULL,              -- précision utile (ex. ancien > nouveau rôle) ; jamais de secret ni de code (S6)
   id_acteur    INT UNSIGNED NULL,              -- trace (0,1) : NULL si identifiant inconnu
   PRIMARY KEY (id_log),
   KEY idx_audit_date (date_action),
@@ -221,6 +253,8 @@ INSERT INTO categorie (libelle_fr, libelle_en) VALUES
 -- GRANT SELECT, INSERT, UPDATE ON tickettournelle.commentaire  TO 'tt_app'@'localhost';
 -- GRANT SELECT, INSERT, UPDATE ON tickettournelle.piece_jointe TO 'tt_app'@'localhost';
 -- GRANT SELECT, INSERT, UPDATE ON tickettournelle.notification TO 'tt_app'@'localhost';
+-- GRANT SELECT, INSERT, UPDATE ON tickettournelle.jeton_compte TO 'tt_app'@'localhost';
+-- GRANT SELECT, INSERT, UPDATE ON tickettournelle.code_secours TO 'tt_app'@'localhost';
 -- GRANT SELECT, INSERT         ON tickettournelle.historique_statut TO 'tt_app'@'localhost';
 -- GRANT SELECT, INSERT         ON tickettournelle.journal_audit     TO 'tt_app'@'localhost';
 

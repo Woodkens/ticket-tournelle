@@ -64,3 +64,34 @@ body {
     color: var(--bs-secondary-color);
     cursor: not-allowed;
 }
+
+/* Carte plus large : enrôlement TOTP, formulaires d'administration */
+.tt-carte-large {
+    max-width: 560px;
+}
+
+/* Bouclier « 2FA active » dans l'en-tête */
+.tt-bouclier {
+    color: var(--tt-bleu);
+}
+
+/* Sous-menu de l'administration */
+.tt-sous-menu .nav-link {
+    color: var(--bs-secondary-color);
+}
+
+.tt-sous-menu .nav-link.active {
+    color: var(--tt-bleu);
+    font-weight: 600;
+    border-bottom: 2px solid var(--tt-bleu);
+}
+
+.tt-sous-menu .nav-link.disabled {
+    opacity: 0.6;
+}
+
+/* Carte de contenu pleine largeur (tableaux d'administration) */
+.tt-panneau {
+    border: 1px solid var(--tt-bordure);
+    border-radius: 0.75rem;
+}

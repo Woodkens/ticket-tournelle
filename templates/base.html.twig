@@ -14,16 +14,23 @@
             <nav class="navbar container" aria-label="{{ 'nav.main'|trans }}">
                 <a class="navbar-brand fw-semibold" href="{{ path('app_root') }}">{{ 'app.name'|trans }}</a>
 
-                <div class="d-flex align-items-center gap-3 ms-auto">
+                <div class="d-flex align-items-center flex-wrap justify-content-end gap-3 ms-auto">
                     {# Bloc vidé par les pages d'erreur : elles ne dépendent ni de la session ni de la base #}
                     {% block nav_utilisateur %}
                         {% if app.user %}
-                            <span class="small text-secondary d-none d-sm-inline">{{ app.user.prenom }} {{ app.user.nom }}</span>
-                            {# Déconnexion en POST + jeton CSRF : un simple lien ne peut pas déconnecter quelqu'un #}
-                            <form method="post" action="{{ path('app_logout') }}" class="m-0">
-                                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
-                                <button type="submit" class="btn btn-outline-secondary btn-sm">{{ 'nav.logout'|trans }}</button>
-                            </form>
+                            <span class="small text-secondary d-none d-sm-inline-flex align-items-center gap-1">
+                                {% if is_granted('ACCES_ADMIN') %}
+                                    {# Bouclier : la double authentification est validée pour cette session #}
+                                    <svg class="tt-bouclier" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                        <path d="M8 0 1.5 2.3v4.2c0 4.1 2.6 7.6 6.5 9.5 3.9-1.9 6.5-5.4 6.5-9.5V2.3L8 0Zm3.3 5.9L7.4 10 4.9 7.6l.9-.9 1.6 1.5 3-3.2.9.9Z"/>
+                                    </svg>
+                                {% endif %}
+                                {{ app.user.prenom }} {{ app.user.nom|first }}.
+                                {% if is_granted('IS_AUTHENTICATED_FULLY') %}
+                                    · {{ ('role.' ~ app.user.role.value)|trans }}
+                                    {% if is_granted('ACCES_ADMIN') %}{{ 'nav.2fa_active'|trans }}{% endif %}
+                                {% endif %}
+                            </span>
                         {% endif %}
                     {% endblock %}
 
@@ -48,11 +55,34 @@
                             </li>
                         {% endfor %}
                     </ul>
+
+                    {% block nav_deconnexion %}
+                        {% if app.user %}
+                            {# Déconnexion en POST + jeton CSRF : un simple lien ne peut pas déconnecter quelqu'un #}
+                            <form method="post" action="{{ path('app_logout') }}" class="m-0">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token('logout') }}">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">{{ 'nav.logout'|trans }}</button>
+                            </form>
+                        {% endif %}
+                    {% endblock %}
                 </div>
             </nav>
         </header>
 
-        <main class="container py-5 flex-grow-1">
+        {% block sous_menu %}{% endblock %}
+
+        <main class="container py-4 flex-grow-1">
+            {# Messages de confirmation ou d'erreur après une action (toujours des clés de traduction) #}
+            {% block messages %}
+                {% for type, messages in app.flashes %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ type == 'error' ? 'danger' : type }}" role="{{ type == 'error' ? 'alert' : 'status' }}">
+                            {{ message is iterable ? message.cle|trans(message.params) : message|trans }}
+                        </div>
+                    {% endfor %}
+                {% endfor %}
+            {% endblock %}
+
             {% block body %}{% endblock %}
         </main>
 

@@ -1,0 +1,11 @@
+{{ 'email.common.hello'|trans({'%prenom%': prenom}) }}
+
+{{ (cle ~ '.intro')|trans }}
+
+{{ lien }}
+
+{{ 'email.common.expires'|trans({'%date%': expiration|date('d/m/Y H:i')}) }}
+
+{{ (cle ~ '.ignore')|trans }}
+
+{{ 'footer.text'|trans }}

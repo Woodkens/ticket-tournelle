@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+
+{% set cle = activation ? 'password_choice.activation' : 'password_choice.reset' %}
+
+{% block title %}{{ (cle ~ '.title')|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="tt-carte mx-auto bg-white p-4">
+        <h1 class="h4 mb-1">{{ (cle ~ '.title')|trans }}</h1>
+        <p class="text-secondary mb-4">{{ (cle ~ '.subtitle')|trans }}</p>
+
+        {{ form_start(formulaire) }}
+            {{ form_row(formulaire.motDePasse.first) }}
+            {{ form_row(formulaire.motDePasse.second) }}
+            <button type="submit" class="btn btn-primary w-100">{{ (cle ~ '.submit')|trans }}</button>
+        {{ form_end(formulaire) }}
+    </div>
+{% endblock %}

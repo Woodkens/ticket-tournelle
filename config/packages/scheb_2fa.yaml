@@ -1,0 +1,17 @@
+# Double authentification des administrateurs (ENF-05, C5, D-21).
+scheb_two_factor:
+    # La 2FA se déclenche après une connexion par formulaire (mot de passe)
+    security_tokens:
+        - Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken
+
+    # TOTP (RFC 6238) : code à 6 chiffres, calculé hors ligne par l'application du téléphone.
+    # La vérification est faite par App\Security\Totp\AuthentificateurTotp (secret chiffré, anti-rejeu).
+    totp:
+        enabled: true
+        issuer: "Ticket'Tournelle"
+        template: security/2fa.html.twig
+
+    # 8 codes de secours à usage unique, stockés hachés (table code_secours)
+    backup_codes:
+        enabled: true
+        manager: App\Security\Totp\GestionCodesSecours

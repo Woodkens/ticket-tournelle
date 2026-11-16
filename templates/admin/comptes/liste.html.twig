@@ -1,0 +1,130 @@
+{% extends 'admin/_layout.html.twig' %}
+
+{% block title %}{{ 'admin.accounts.title'|trans }} · {{ parent() }}{% endblock %}
+
+{% block body %}
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+        <h1 class="h3 mb-0">{{ 'admin.accounts.title'|trans }}</h1>
+        <div class="d-flex gap-2">
+            <a class="btn btn-outline-primary" href="{{ path('app_admin_import') }}">{{ 'admin.accounts.import'|trans }}</a>
+            <a class="btn btn-primary" href="{{ path('app_admin_compte_creer') }}">{{ 'admin.accounts.create'|trans }}</a>
+        </div>
+    </div>
+
+    <div class="alert alert-info" role="note">{{ 'admin.accounts.no_delete'|trans }}</div>
+
+    <div class="tt-panneau bg-white p-3">
+        {# Recherche et filtres : simple formulaire GET, les valeurs sont relues et vérifiées par le serveur #}
+        <form method="get" action="{{ path('app_admin_comptes') }}" class="row g-2 align-items-end mb-3" role="search">
+            <div class="col-12 col-md-5">
+                <label for="q" class="form-label">{{ 'admin.accounts.search'|trans }}</label>
+                <input type="search" id="q" name="q" value="{{ filtres.q }}" maxlength="100" class="form-control">
+            </div>
+            <div class="col-6 col-md-3">
+                <label for="role" class="form-label">{{ 'admin.accounts.col.role'|trans }}</label>
+                <select id="role" name="role" class="form-select">
+                    <option value="">{{ 'admin.accounts.all'|trans }}</option>
+                    {% for role in roles %}
+                        <option value="{{ role.value }}"{{ filtres.role == role.value ? ' selected' }}>{{ ('role.' ~ role.value)|trans }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-2">
+                <label for="etat" class="form-label">{{ 'admin.accounts.col.state'|trans }}</label>
+                <select id="etat" name="etat" class="form-select">
+                    <option value="">{{ 'admin.accounts.all'|trans }}</option>
+                    <option value="actif"{{ filtres.etat == 'actif' ? ' selected' }}>{{ 'admin.accounts.state.active'|trans }}</option>
+                    <option value="desactive"{{ filtres.etat == 'desactive' ? ' selected' }}>{{ 'admin.accounts.state.disabled'|trans }}</option>
+                </select>
+            </div>
+            <div class="col-12 col-md-2">
+                <button type="submit" class="btn btn-outline-secondary w-100">{{ 'admin.accounts.filter'|trans }}</button>
+            </div>
+        </form>
+
+        {# table-responsive : le tableau défile horizontalement sur mobile #}
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <caption class="visually-hidden">{{ 'admin.accounts.title'|trans }}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">{{ 'admin.accounts.col.name'|trans }}</th>
+                        <th scope="col">{{ 'admin.accounts.col.email'|trans }}</th>
+                        <th scope="col">{{ 'admin.accounts.col.role'|trans }}</th>
+                        <th scope="col">{{ 'admin.accounts.col.2fa'|trans }}</th>
+                        <th scope="col">{{ 'admin.accounts.col.state'|trans }}</th>
+                        <th scope="col">{{ 'admin.accounts.col.last_login'|trans }}</th>
+                        <th scope="col">{{ 'admin.accounts.col.actions'|trans }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for compte in comptes %}
+                        <tr data-compte="{{ compte.id }}">
+                            <td>{{ compte.nom }} {{ compte.prenom }}</td>
+                            <td>{{ compte.email }}</td>
+                            <td><span class="badge text-bg-secondary">{{ ('role.' ~ compte.role.value)|trans }}</span></td>
+                            <td>{{ compte.totpActif ? 'admin.accounts.2fa_active'|trans : '—' }}</td>
+                            <td>
+                                {% if compte.actif %}
+                                    <span class="badge text-bg-success">{{ 'admin.accounts.state.active'|trans }}</span>
+                                    {% if compte.doitChangerMdp %}
+                                        <div class="small text-secondary">{{ 'admin.accounts.state.pending'|trans }}</div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="badge text-bg-secondary">{{ 'admin.accounts.state.disabled'|trans }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-nowrap">
+                                {{ dernieres_connexions[compte.id] is defined ? dernieres_connexions[compte.id]|date('d/m/Y H:i') : '—' }}
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <a class="btn btn-sm btn-outline-secondary" href="{{ path('app_admin_compte_modifier', {id: compte.id}) }}">{{ 'admin.accounts.action.edit'|trans }}</a>
+
+                                    {# Chaque action est un petit formulaire POST avec un jeton CSRF propre au compte.
+                                       Un bouton n'apparaît que si la règle le permet (CompteVoter). Il n'existe pas de bouton « Supprimer ». #}
+                                    {% if is_granted('COMPTE_DESACTIVER', compte) %}
+                                        <form method="post" action="{{ path('app_admin_compte_desactiver', {id: compte.id}) }}" class="m-0">
+                                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('compte-' ~ compte.id) }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">{{ 'admin.accounts.action.disable'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                    {% if is_granted('COMPTE_REACTIVER', compte) %}
+                                        <form method="post" action="{{ path('app_admin_compte_reactiver', {id: compte.id}) }}" class="m-0">
+                                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('compte-' ~ compte.id) }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-success">{{ 'admin.accounts.action.enable'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                    {% if is_granted('COMPTE_REINITIALISER_2FA', compte) %}
+                                        <form method="post" action="{{ path('app_admin_compte_reinitialiser_2fa', {id: compte.id}) }}" class="m-0">
+                                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('compte-' ~ compte.id) }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">{{ 'admin.accounts.action.reset_2fa'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                    {% if compte.actif and compte.doitChangerMdp %}
+                                        <form method="post" action="{{ path('app_admin_compte_renvoyer_activation', {id: compte.id}) }}" class="m-0">
+                                            <input type="hidden" name="_csrf_token" value="{{ csrf_token('compte-' ~ compte.id) }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">{{ 'admin.accounts.action.resend'|trans }}</button>
+                                        </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="7" class="text-center text-secondary py-4">{{ 'admin.accounts.empty'|trans }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if pages > 1 %}
+            <nav class="d-flex justify-content-between align-items-center mt-3" aria-label="{{ 'admin.accounts.pagination'|trans }}">
+                <a class="btn btn-sm btn-outline-secondary{{ page <= 1 ? ' disabled' }}" href="{{ path('app_admin_comptes', filtres|merge({page: page - 1})) }}">{{ 'admin.accounts.previous'|trans }}</a>
+                <span class="small text-secondary">{{ 'admin.accounts.page'|trans({'%page%': page, '%pages%': pages, '%total%': total}) }}</span>
+                <a class="btn btn-sm btn-outline-secondary{{ page >= pages ? ' disabled' }}" href="{{ path('app_admin_comptes', filtres|merge({page: page + 1})) }}">{{ 'admin.accounts.next'|trans }}</a>
+            </nav>
+        {% endif %}
+    </div>
+
+    <p class="small text-secondary mt-3">{{ 'admin.accounts.audit_note'|trans }}</p>
+{% endblock %}
